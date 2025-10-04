@@ -10,10 +10,12 @@ const PORT = process.env.PORT || 3001;
 
 app.use(bodyParser.json());
 
+// Rota raiz simples
 app.get("/", (req, res) => {
   res.send("BRYNIX PEI BOT UP ✅");
 });
 
+// Rota de teste para envio de lead
 app.get("/pei/test", async (req, res) => {
   try {
     const testRow = [
@@ -37,23 +39,23 @@ app.get("/pei/test", async (req, res) => {
   }
 });
 
-// NOVA ROTA DE DEBUG
+// Rota de debug para checar abas da planilha via Service Account
 app.get("/pei/debug-sheets", async (req, res) => {
   try {
-    const auth = new google.auth.OAuth2(
-      process.env.GOOGLE_OAUTH_CLIENT_ID,
-      process.env.GOOGLE_OAUTH_CLIENT_SECRET
-    );
+    const auth = new google.auth.GoogleAuth({
+      credentials: JSON.parse(process.env.GOOGLE_SA_JSON),
+      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    });
 
-    auth.setCredentials({ refresh_token: process.env.GOOGLE_OAUTH_REFRESH_TOKEN });
+    const client = await auth.getClient();
+    const sheets = google.sheets({ version: "v4", auth: client });
 
-    const sheets = google.sheets({ version: "v4", auth });
     const metadata = await sheets.spreadsheets.get({
       spreadsheetId: process.env.SHEETS_SPREADSHEET_ID,
     });
 
     const sheetNames = metadata.data.sheets.map(s => s.properties.title);
-    console.log("📋 Abas visíveis pela API:", sheetNames);
+    console.log("📋 Abas visíveis pela Service Account:", sheetNames);
 
     res.status(200).json({ sheets: sheetNames });
   } catch (error) {
