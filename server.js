@@ -1,76 +1,98 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+const cors = require("cors");
 const { google } = require("googleapis");
-const { appendLeadRow } = require("./sheets");
-const path = require("path"); // 👈 adicionado
+const fs = require("fs");
+const path = require("path");
 
-const app = express();
+// === VARIÁVEIS DE AMBIENTE NECESSÁRIAS ===
+const SHEET_ID = process.env.SHEETS_SPREADSHEET_ID;
+const GOOGLE_SA_JSON = process.env.GOOGLE_SA_JSON;
 const PORT = process.env.PORT || 3001;
 
+const app = express();
+app.use(cors());
 app.use(bodyParser.json());
 
-// Middleware para arquivos estáticos
-app.use(express.static(path.join(__dirname, "public"))); // 👈 adicionado
+// === AUTENTICAÇÃO COM SERVICE ACCOUNT ===
+function getSheetsClient() {
+  const credentials = JSON.parse(GOOGLE_SA_JSON);
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+  });
+  return google.sheets({ version: "v4", auth });
+}
 
-// Rota raiz simples
-app.get("/", (req, res) => {
-  res.send("BRYNIX PEI BOT UP ✅");
-});
-
-// Rota de teste para envio de lead
-app.get("/pei/test", async (req, res) => {
+// === ROTA POST: /pei/test ===
+app.post("/pei/test", async (req, res) => {
   try {
-    const testRow = [
-      new Date().toISOString(),
-      "Lead de Teste",
-      "teste@brynix.ai",
-      "Empresa Teste",
-      "Pequena",
-      "Quer entender como usar IA nos processos de vendas",
-      "Morno",
-      "Teste automático",
-      new Date().toLocaleString(),
-      "Render Test"
+    const {
+      nome,
+      email,
+      whatsapp,
+      empresa,
+      porte,
+      desafio,
+      classificacao,
+      origem = "site",
+      tipo_interacao = "conversa_pei",
+      utm_source = "",
+      utm_medium = "",
+      utm_campaign = "",
+      request_id = "",
+      ip_hash = "",
+    } = req.body;
+
+    // Validar dados essenciais
+    if (!email || !nome || !empresa || !porte || !desafio) {
+      return res.status(400).json({ error: "Dados incompletos." });
+    }
+
+    const sheets = getSheetsClient();
+    const timestamp = new Date().toISOString();
+
+    const row = [
+      timestamp,
+      origem,
+      nome,
+      email,
+      whatsapp,
+      empresa,
+      porte,
+      desafio,
+      tipo_interacao,
+      classificacao,
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      request_id,
+      ip_hash,
     ];
 
-    await appendLeadRow(testRow);
-    res.status(200).json({ success: true, message: "Lead de teste enviado para a planilha!" });
-  } catch (error) {
-    console.error("Erro na rota /pei/test:", error);
-    res.status(500).json({ success: false, error: error.message || "Erro desconhecido" });
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: "Leads!A1",
+      valueInputOption: "USER_ENTERED",
+      insertDataOption: "INSERT_ROWS",
+      requestBody: {
+        values: [row],
+      },
+    });
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Erro ao salvar dados no Google Sheets:", err);
+    res.status(500).json({ error: "Falha ao registrar os dados." });
   }
 });
 
-// Rota de debug para checar abas da planilha via Service Account
-app.get("/pei/debug-sheets", async (req, res) => {
-  try {
-    const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(process.env.GOOGLE_SA_JSON),
-      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
-    });
-
-    const client = await auth.getClient();
-    const sheets = google.sheets({ version: "v4", auth: client });
-
-    const metadata = await sheets.spreadsheets.get({
-      spreadsheetId: process.env.SHEETS_SPREADSHEET_ID,
-    });
-
-    const sheetNames = metadata.data.sheets.map(s => s.properties.title);
-    console.log("📋 Abas visíveis pela Service Account:", sheetNames);
-
-    res.status(200).json({ sheets: sheetNames });
-  } catch (error) {
-    console.error("Erro ao buscar abas:", error.response?.data || error.message);
-    res.status(500).json({ error: error.message || "Erro desconhecido" });
-  }
+// === ROTA GET BÁSICA ===
+app.get("/", (req, res) => {
+  res.send("🧠 BRYNIX PEI BOT up and running.");
 });
 
-// 👇 Rota para página visual do PEI
-app.get("/pei", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "pei.html"));
-});
-
+// === INICIAR SERVIDOR ===
 app.listen(PORT, () => {
   console.log(`🚀 BRYNIX PEI BOT rodando na porta ${PORT}`);
 });
