@@ -26,51 +26,34 @@ const HEADERS = [
   "origem",
   "tipo_interacao",
   "utm_source",
-  "utm_medium",
-  "utm_campaign",
-  "request_id",
-  "ip_hash",
-  "data_hora",
-];
+  "utm_medium",const { google } = require("googleapis");
 
-// Função para adicionar um novo lead
-async function appendLead(data) {
-  const now = new Date().toISOString();
+const auth = new google.auth.GoogleAuth({
+  credentials: JSON.parse(process.env.GOOGLE_SA_JSON),
+  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+});
 
-  const values = [
-    HEADERS.map((header) =>
-      header === "data_hora" ? now : data[header] || ""
-    ),
+const sheets = google.sheets({ version: "v4", auth });
+
+async function registrarLead({ nome, empresa, contato, porte, desafio, classificacao }) {
+  const valores = [
+    [new Date().toLocaleString("pt-BR"), nome, empresa || "", contato, porte || "", desafio, classificacao || "morno"]
   ];
 
-  await sheets.spreadsheets.values.append({
-    auth,
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${SHEET_NAME}!A1`,
-    valueInputOption: "RAW",
-    insertDataOption: "INSERT_ROWS",
-    requestBody: {
-      values,
-    },
-  });
+  try {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: process.env.SHEETS_SPREADSHEET_ID,
+      range: "Leads!A1",
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: valores,
+      },
+    });
+    return true;
+  } catch (error) {
+    console.error("Erro ao gravar na planilha:", error.message);
+    return false;
+  }
 }
 
-// Função de log (opcional)
-async function appendLog(msg) {
-  const now = new Date().toISOString();
-  await sheets.spreadsheets.values.append({
-    auth,
-    spreadsheetId: SPREADSHEET_ID,
-    range: "Logs!A1",
-    valueInputOption: "RAW",
-    insertDataOption: "INSERT_ROWS",
-    requestBody: {
-      values: [[now, msg]],
-    },
-  });
-}
-
-module.exports = {
-  appendLead,
-  appendLog,
-};
+module.exports = { registrarLead };
