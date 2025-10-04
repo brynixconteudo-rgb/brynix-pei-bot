@@ -1,14 +1,16 @@
-// server.js
-
 const express = require("express");
 const bodyParser = require("body-parser");
 const { google } = require("googleapis");
 const { appendLeadRow } = require("./sheets");
+const path = require("path"); // 👈 adicionado
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(bodyParser.json());
+
+// Middleware para arquivos estáticos
+app.use(express.static(path.join(__dirname, "public"))); // 👈 adicionado
 
 // Rota raiz simples
 app.get("/", (req, res) => {
@@ -62,6 +64,11 @@ app.get("/pei/debug-sheets", async (req, res) => {
     console.error("Erro ao buscar abas:", error.response?.data || error.message);
     res.status(500).json({ error: error.message || "Erro desconhecido" });
   }
+});
+
+// 👇 Rota para página visual do PEI
+app.get("/pei", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "pei.html"));
 });
 
 app.listen(PORT, () => {
