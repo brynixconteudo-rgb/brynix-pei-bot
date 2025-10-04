@@ -1,85 +1,79 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const path = require("path");
+const { google } = require("googleapis");
+const { gerarResposta } = require("./ai"); // <-- IA aqui
 
-const { appendLead, appendLog } = require("./sheets");
-const peiRoutes = require("./apps/pei/pei"); // <-- Importa o pei.js (IA conversacional)
-
-const PORT = process.env.PORT || 3001;
 const app = express();
+const port = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(bodyParser.json());
 
-// === SERVE HTML FORM (opcional) ===
-app.use(express.static(path.join(__dirname, "public")));
+// ----------- PLANILHA GOOGLE CONFIG -----------
 
-// === HEALTH CHECK ===
-app.get("/pei/healthz", (req, res) => {
-  res.send("✅ BRYNIX PEI BOT ativo.");
+const auth = new google.auth.GoogleAuth({
+  credentials: JSON.parse(process.env.GOOGLE_SA_JSON),
+  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
 });
 
-// === RECEBE LEAD VIA FORMULARIO TESTE ===
+const sheets = google.sheets({ version: "v4", auth });
+
+// ----------- ROTA /pei/test (LEADS → PLANILHA) -----------
+
 app.post("/pei/test", async (req, res) => {
   try {
-    const {
-      nome,
-      email,
-      whatsapp,
-      empresa,
-      porte,
-      desafio,
-      classificacao,
-      origem = "site",
-      tipo_interacao = "conversa_pei",
-      utm_source = "",
-      utm_medium = "",
-      utm_campaign = "",
-      request_id = "",
-      ip_hash = "",
-    } = req.body;
+    const { nome, empresa, contato, porte, desafio, classificacao } = req.body;
 
-    if (!email || !nome || !empresa || !porte || !desafio) {
-      return res.status(400).json({ error: "Dados incompletos." });
+    if (!nome || !contato || !desafio) {
+      return res.status(400).send("Campos obrigatórios ausentes.");
     }
 
-    const leadData = {
-      nome,
-      email,
-      whatsapp,
-      empresa,
-      porte,
-      desafio,
-      classificacao,
-      origem,
-      tipo_interacao,
-      utm_source,
-      utm_medium,
-      utm_campaign,
-      request_id,
-      ip_hash,
-    };
+    const valores = [
+      [new Date().toLocaleString("pt-BR"), nome, empresa || "", contato, porte || "", desafio, classificacao || "morno"]
+    ];
 
-    await appendLead(leadData);
-    await appendLog(`Lead registrado: ${nome} (${email})`);
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: process.env.SHEETS_SPREADSHEET_ID,
+      range: "Leads!A1",
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: valores,
+      },
+    });
 
-    res.status(200).json({ success: true });
-  } catch (err) {
-    console.error("Erro ao salvar dados:", err);
-    res.status(500).json({ error: "Falha ao registrar os dados." });
+    res.status(200).send("Lead registrado com sucesso.");
+  } catch (error) {
+    console.error("Erro ao gravar na planilha:", error.message);
+    res.status(500).send("Erro ao gravar na planilha.");
   }
 });
 
-// === NOVA ROTA CONVERSACIONAL COM IA ===
-app.use("/pei", peiRoutes); // Ex: POST para /pei/lead
+// ----------- NOVA ROTA /pei/ia (CONVERSA COM IA) -----------
 
-// === ROTA RAIZ ===
-app.get("/", (req, res) => {
-  res.send("🧠 BRYNIX PEI BOT up and running.");
+app.post("/pei/ia", async (req, res) => {
+  try {
+    const pergunta = req.body.pergunta;
+    if (!pergunta) {
+      return res.status(400).send("Pergunta ausente.");
+    }
+
+    const resposta = await gerarResposta(pergunta);
+    res.send({ resposta });
+  } catch (error) {
+    console.error("Erro ao processar pergunta:", error.message);
+    res.status(500).send("Erro interno na IA.");
+  }
 });
 
-// === START SERVER ===
-app.listen(PORT, () => {
-  console.log(`🚀 BRYNIX PEI BOT rodando na porta ${PORT}`);
+// ----------- RAIZ -----------
+
+app.get("/", (req, res) => {
+  res.send("🚀 BRYNIX PEI BOT ativo.");
+});
+
+// ----------- INICIALIZA -----------
+
+app.listen(port, () => {
+  console.log(`Servidor rodando na porta ${port}`);
 });
