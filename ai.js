@@ -1,4 +1,3 @@
-// ai.js
 const { Configuration, OpenAIApi } = require("openai");
 
 const configuration = new Configuration({
@@ -7,4 +6,15 @@ const configuration = new Configuration({
 
 const openai = new OpenAIApi(configuration);
 
-module.exports = openai;
+async function gerarResposta(pergunta) {
+  const completion = await openai.createChatCompletion({
+    model: "gpt-4",
+    messages: [{ role: "user", content: pergunta }],
+  });
+
+  return completion.data.choices[0].message.content;
+}
+
+module.exports = {
+  gerarResposta
+};
