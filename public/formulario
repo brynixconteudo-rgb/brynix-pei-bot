@@ -1,0 +1,74 @@
+<!-- public/formulario.html -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Formulário de Teste - PEI BOT</title>
+</head>
+<body style="font-family: Arial, sans-serif; padding: 20px;">
+  <h2>Formulário de Teste - BRYNIX PEI BOT</h2>
+  <form id="leadForm">
+    <label>Nome: <input type="text" name="nome" required /></label><br /><br />
+    <label>Email: <input type="email" name="email" required /></label><br /><br />
+    <label>WhatsApp: <input type="text" name="whatsapp" /></label><br /><br />
+    <label>Empresa: <input type="text" name="empresa" required /></label><br /><br />
+    <label>Porte:
+      <select name="porte" required>
+        <option value="Pequeno">Pequeno</option>
+        <option value="Médio">Médio</option>
+        <option value="Grande">Grande</option>
+      </select>
+    </label><br /><br />
+    <label>Desafio: <input type="text" name="desafio" required /></label><br /><br />
+    <label>Classificação:
+      <select name="classificacao">
+        <option value="quente">Quente</option>
+        <option value="morno">Morno</option>
+        <option value="frio">Frio</option>
+      </select>
+    </label><br /><br />
+    <button type="submit">Enviar</button>
+  </form>
+
+  <p id="resposta"></p>
+
+  <script>
+    document.getElementById('leadForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const form = e.target;
+      const data = {
+        nome: form.nome.value,
+        email: form.email.value,
+        whatsapp: form.whatsapp.value,
+        empresa: form.empresa.value,
+        porte: form.porte.value,
+        desafio: form.desafio.value,
+        classificacao: form.classificacao.value,
+      };
+
+      const resposta = document.getElementById('resposta');
+      resposta.innerText = "Enviando...";
+
+      try {
+        const res = await fetch('/pei/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        const json = await res.json();
+        if (json.success) {
+          resposta.innerText = "Lead enviado com sucesso!";
+          form.reset();
+        } else {
+          resposta.innerText = "Erro ao enviar. Verifique os dados.";
+        }
+      } catch (err) {
+        resposta.innerText = "Erro no envio. Tente novamente.";
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>
