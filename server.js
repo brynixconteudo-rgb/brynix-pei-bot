@@ -1,7 +1,10 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const path = require("path");
+
 const { appendLead, appendLog } = require("./sheets");
+const peiRoutes = require("./apps/pei/pei"); // <-- Importa o pei.js (IA conversacional)
 
 const PORT = process.env.PORT || 3001;
 const app = express();
@@ -9,16 +12,15 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// === ROTA PARA SERVIR FORMULÁRIO HTML ===
-const path = require("path");
+// === SERVE HTML FORM (opcional) ===
 app.use(express.static(path.join(__dirname, "public")));
 
-// Rota de debug opcional
+// === HEALTH CHECK ===
 app.get("/pei/healthz", (req, res) => {
   res.send("✅ BRYNIX PEI BOT ativo.");
 });
 
-// Rota para receber leads
+// === RECEBE LEAD VIA FORMULARIO TESTE ===
 app.post("/pei/test", async (req, res) => {
   try {
     const {
@@ -38,7 +40,6 @@ app.post("/pei/test", async (req, res) => {
       ip_hash = "",
     } = req.body;
 
-    // Validação mínima
     if (!email || !nome || !empresa || !porte || !desafio) {
       return res.status(400).json({ error: "Dados incompletos." });
     }
@@ -70,12 +71,15 @@ app.post("/pei/test", async (req, res) => {
   }
 });
 
-// Rota raiz
+// === NOVA ROTA CONVERSACIONAL COM IA ===
+app.use("/pei", peiRoutes); // Ex: POST para /pei/lead
+
+// === ROTA RAIZ ===
 app.get("/", (req, res) => {
   res.send("🧠 BRYNIX PEI BOT up and running.");
 });
 
-// Start
+// === START SERVER ===
 app.listen(PORT, () => {
   console.log(`🚀 BRYNIX PEI BOT rodando na porta ${PORT}`);
 });
