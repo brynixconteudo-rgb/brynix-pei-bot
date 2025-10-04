@@ -9,6 +9,10 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+// === ROTA PARA SERVIR FORMULÁRIO HTML ===
+const path = require("path");
+app.use(express.static(path.join(__dirname, "public")));
+
 // Rota de debug opcional
 app.get("/pei/healthz", (req, res) => {
   res.send("✅ BRYNIX PEI BOT ativo.");
