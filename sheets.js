@@ -1,71 +1,85 @@
-// sheets.js
+const { google } = require('googleapis');
+const { format } = require('date-fns');
 
-const { google } = require("googleapis");
+// Autenticação com Service Account via GOOGLE_SA_JSON
+const auth = new google.auth.GoogleAuth({
+  credentials: JSON.parse(process.env.GOOGLE_SA_JSON),
+  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+});
+
+const sheets = google.sheets({ version: 'v4', auth });
 
 const SHEET_ID = process.env.SHEETS_SPREADSHEET_ID;
-const CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID;
-const CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
-const REFRESH_TOKEN = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
 
-let sheetsAPI;
-
-function getSheetsClient() {
-  if (!sheetsAPI) {
-    const oauth2Client = new google.auth.OAuth2(
-      CLIENT_ID,
-      CLIENT_SECRET
-    );
-
-    oauth2Client.setCredentials({
-      refresh_token: REFRESH_TOKEN,
-    });
-
-    sheetsAPI = google.sheets({
-      version: "v4",
-      auth: oauth2Client,
-    });
-  }
-
-  return sheetsAPI;
+async function getSheetMetadata() {
+  const response = await sheets.spreadsheets.get({
+    spreadsheetId: SHEET_ID,
+  });
+  return response.data;
 }
 
-async function appendLeadRow(rowValues, sheetName = "Leads") {
-  const sheets = getSheetsClient();
-  const range = `${sheetName}!A1`;
+async function getSheetTabs() {
+  try {
+    const metadata = await getSheetMetadata();
+    const tabs = metadata.sheets.map(sheet => sheet.properties.title);
+    return tabs;
+  } catch (error) {
+    console.error('Erro ao buscar abas:', error);
+    throw error;
+  }
+}
+
+async function appendLead(leadData) {
+  const tab = 'Dados_Projeto';
+  const values = [[
+    new Date().toISOString(),
+    leadData.origem || '',
+    leadData.nome || '',
+    leadData.email || '',
+    leadData.whatsapp || '',
+    leadData.empresa || '',
+    leadData.porte || '',
+    leadData.desafio || '',
+    leadData.classificacao || '',
+    leadData.tipo_interacao || '',
+    leadData.request_id || '',
+    leadData.ip_hash || ''
+  ]];
 
   try {
-    // 🔍 Mostra as abas visíveis
-    const metadata = await sheets.spreadsheets.get({
-      spreadsheetId: SHEET_ID,
-    });
-
-    const sheetNames = metadata.data.sheets.map(s => s.properties.title);
-    console.log("📋 Abas visíveis na planilha:", sheetNames);
-
-    // ➕ Envia os dados
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
-      range,
-      valueInputOption: "USER_ENTERED",
-      insertDataOption: "INSERT_ROWS",
-      requestBody: {
-        values: [rowValues],
-      },
+      range: `${tab}!A1`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values }
     });
+  } catch (error) {
+    console.error('Erro ao inserir lead:', error);
+    throw error;
+  }
+}
 
-    console.log("✅ Lead registrado com sucesso.");
-  } catch (err) {
-    if (err.response) {
-      console.error("❌ Erro ao registrar lead:");
-      console.error("Status:", err.response.status);
-      console.error("Mensagem:", JSON.stringify(err.response.data, null, 2));
-    } else {
-      console.error("❌ Erro inesperado:", err.message || err);
-    }
-    throw err;
+async function appendLog(message) {
+  const tab = 'Atualizacao_LOG';
+  const values = [[format(new Date(), 'yyyy-MM-dd HH:mm:ss'), message]];
+
+  try {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: `${tab}!A1`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values }
+    });
+  } catch (error) {
+    console.error('Erro ao gravar log:', error);
   }
 }
 
 module.exports = {
-  appendLeadRow,
+  getSheetMetadata,
+  getSheetTabs,
+  appendLead,
+  appendLog
 };
