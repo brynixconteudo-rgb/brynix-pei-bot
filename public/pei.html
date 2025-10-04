@@ -1,159 +1,59 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>BRYNIX PEI</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    #chat-container {
-      width: 100%;
-      max-width: 500px;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    #messages {
-      height: 300px;
-      overflow-y: auto;
-      margin-bottom: 10px;
-    }
-    .message {
-      margin: 10px 0;
-    }
-    .user {
-      text-align: right;
-      color: #0077ff;
-    }
-    .bot {
-      text-align: left;
-      color: #333;
-    }
-    input {
-      width: 100%;
-      padding: 10px;
-      font-size: 16px;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <title>BRYNIX PEI - Teste de Lead</title>
 </head>
 <body>
-  <div id="chat-container">
-    <div id="messages"></div>
-    <input type="text" id="userInput" placeholder="Digite sua resposta e aperte Enter" />
-  </div>
+  <h1>Formulário de Lead</h1>
+  <form id="leadForm">
+    <label>Nome: <input type="text" name="nome" required /></label><br>
+    <label>Email: <input type="email" name="email" required /></label><br>
+    <label>WhatsApp: <input type="text" name="whatsapp" /></label><br>
+    <label>Empresa: <input type="text" name="empresa" required /></label><br>
+    <label>Porte: 
+      <select name="porte" required>
+        <option value="Pequeno">Pequeno</option>
+        <option value="Médio">Médio</option>
+        <option value="Grande">Grande</option>
+      </select>
+    </label><br>
+    <label>Desafio: <input type="text" name="desafio" required /></label><br>
+    <label>Classificação: 
+      <select name="classificacao" required>
+        <option value="quente">Quente</option>
+        <option value="morno">Morno</option>
+        <option value="frio">Frio</option>
+      </select>
+    </label><br><br>
+    <button type="submit">Enviar</button>
+  </form>
+
+  <p id="statusMsg"></p>
 
   <script>
-    const messagesDiv = document.getElementById("messages");
-    const userInput = document.getElementById("userInput");
+    document.getElementById("leadForm").addEventListener("submit", async function (event) {
+      event.preventDefault();
 
-    let chatHistory = "";
-    let userData = {
-      nome: null,
-      email: null,
-      empresa: null,
-      porte: null,
-      desafio: null
-    };
-    let etapa = 0;
+      const formData = new FormData(event.target);
+      const data = Object.fromEntries(formData.entries());
 
-    const perguntas = [
-      "Olá! Seja bem-vindo à BRYNIX. 😊 Qual é o seu nome?",
-      "Prazer, {nome}! Qual é o seu e-mail?",
-      "Legal! Qual o nome da sua empresa?",
-      "Obrigado! Qual é o porte da empresa? (Pequena, Média ou Grande?)",
-      "Perfeito. Agora me diga: qual desafio ou oportunidade está buscando resolver com Inteligência Artificial?",
-      "Ótimo! Agradeço por compartilhar. Vou organizar suas informações e nosso time vai entrar em contato com você em breve. 😉"
-    ];
+      const response = await fetch("https://brynix-pei-bot.onrender.com/pei/test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+      });
 
-    function exibirMensagem(texto, classe) {
-      const msg = document.createElement("div");
-      msg.className = `message ${classe}`;
-      msg.innerText = texto;
-      messagesDiv.appendChild(msg);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    }
-
-    async function enviarParaBackend() {
-      const row = [
-        new Date().toISOString(),
-        userData.nome,
-        userData.email,
-        userData.empresa,
-        userData.porte,
-        userData.desafio,
-        "Quente",
-        "Qualificação via PEI",
-        new Date().toLocaleString(),
-        "Widget PEI"
-      ];
-
-      try {
-        const res = await fetch("/pei/test", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ row })
-        });
-        const data = await res.json();
-        if (data.success) {
-          exibirMensagem("✅ Seus dados foram enviados com sucesso!", "bot");
-        } else {
-          exibirMensagem("⚠️ Ocorreu um erro ao enviar os dados. Por favor, tente novamente.", "bot");
-        }
-      } catch (error) {
-        console.error("Erro no envio:", error);
-        exibirMensagem("❌ Não consegui enviar seus dados agora. Pode tentar mais tarde?", "bot");
-      }
-    }
-
-    function processarResposta(resposta) {
-      resposta = resposta.trim();
-
-      if (etapa === 0) {
-        userData.nome = resposta;
-        etapa++;
-        exibirMensagem(perguntas[1].replace("{nome}", userData.nome), "bot");
-      } else if (etapa === 1) {
-        userData.email = resposta;
-        etapa++;
-        exibirMensagem(perguntas[2], "bot");
-      } else if (etapa === 2) {
-        userData.empresa = resposta;
-        etapa++;
-        exibirMensagem(perguntas[3], "bot");
-      } else if (etapa === 3) {
-        userData.porte = resposta;
-        etapa++;
-        exibirMensagem(perguntas[4], "bot");
-      } else if (etapa === 4) {
-        userData.desafio = resposta;
-        etapa++;
-        exibirMensagem(perguntas[5], "bot");
-        enviarParaBackend();
-      }
-    }
-
-    userInput.addEventListener("keypress", function(e) {
-      if (e.key === "Enter") {
-        const texto = userInput.value;
-        if (!texto) return;
-        exibirMensagem(texto, "user");
-        userInput.value = "";
-        processarResposta(texto);
+      const statusMsg = document.getElementById("statusMsg");
+      if (response.ok) {
+        statusMsg.textContent = "✅ Lead enviado com sucesso!";
+        event.target.reset();
+      } else {
+        statusMsg.textContent = "❌ Falha ao enviar lead.";
       }
     });
-
-    // Início
-    exibirMensagem(perguntas[0], "bot");
   </script>
 </body>
 </html>
