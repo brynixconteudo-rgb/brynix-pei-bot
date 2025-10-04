@@ -1,0 +1,14 @@
+{
+  "name": "brynix-pei-bot",
+  "version": "1.0.0",
+  "description": "Porta de Entrada Inteligente da BRYNIX",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "body-parser": "^1.20.2",
+    "googleapis": "^133.0.0"
+  }
+}
