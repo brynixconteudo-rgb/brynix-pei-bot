@@ -2,6 +2,7 @@
 
 const express = require("express");
 const bodyParser = require("body-parser");
+const { google } = require("googleapis");
 const { appendLeadRow } = require("./sheets");
 
 const app = express();
@@ -33,6 +34,31 @@ app.get("/pei/test", async (req, res) => {
   } catch (error) {
     console.error("Erro na rota /pei/test:", error);
     res.status(500).json({ success: false, error: error.message || "Erro desconhecido" });
+  }
+});
+
+// NOVA ROTA DE DEBUG
+app.get("/pei/debug-sheets", async (req, res) => {
+  try {
+    const auth = new google.auth.OAuth2(
+      process.env.GOOGLE_OAUTH_CLIENT_ID,
+      process.env.GOOGLE_OAUTH_CLIENT_SECRET
+    );
+
+    auth.setCredentials({ refresh_token: process.env.GOOGLE_OAUTH_REFRESH_TOKEN });
+
+    const sheets = google.sheets({ version: "v4", auth });
+    const metadata = await sheets.spreadsheets.get({
+      spreadsheetId: process.env.SHEETS_SPREADSHEET_ID,
+    });
+
+    const sheetNames = metadata.data.sheets.map(s => s.properties.title);
+    console.log("📋 Abas visíveis pela API:", sheetNames);
+
+    res.status(200).json({ sheets: sheetNames });
+  } catch (error) {
+    console.error("Erro ao buscar abas:", error.response?.data || error.message);
+    res.status(500).json({ error: error.message || "Erro desconhecido" });
   }
 });
 
