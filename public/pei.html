@@ -1,59 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>BRYNIX PEI - Teste de Lead</title>
+  <meta charset="UTF-8" />
+  <title>BRYNIX PEI</title>
 </head>
 <body>
-  <h1>Formulário de Lead</h1>
-  <form id="leadForm">
-    <label>Nome: <input type="text" name="nome" required /></label><br>
-    <label>Email: <input type="email" name="email" required /></label><br>
-    <label>WhatsApp: <input type="text" name="whatsapp" /></label><br>
-    <label>Empresa: <input type="text" name="empresa" required /></label><br>
-    <label>Porte: 
-      <select name="porte" required>
-        <option value="Pequeno">Pequeno</option>
-        <option value="Médio">Médio</option>
-        <option value="Grande">Grande</option>
-      </select>
-    </label><br>
-    <label>Desafio: <input type="text" name="desafio" required /></label><br>
-    <label>Classificação: 
-      <select name="classificacao" required>
-        <option value="quente">Quente</option>
-        <option value="morno">Morno</option>
-        <option value="frio">Frio</option>
-      </select>
-    </label><br><br>
-    <button type="submit">Enviar</button>
-  </form>
-
-  <p id="statusMsg"></p>
-
-  <script>
-    document.getElementById("leadForm").addEventListener("submit", async function (event) {
-      event.preventDefault();
-
-      const formData = new FormData(event.target);
-      const data = Object.fromEntries(formData.entries());
-
-      const response = await fetch("https://brynix-pei-bot.onrender.com/pei/test", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(data)
-      });
-
-      const statusMsg = document.getElementById("statusMsg");
-      if (response.ok) {
-        statusMsg.textContent = "✅ Lead enviado com sucesso!";
-        event.target.reset();
-      } else {
-        statusMsg.textContent = "❌ Falha ao enviar lead.";
-      }
-    });
-  </script>
+  <h1>Seja bem-vindo à BRYNIX!</h1>
+  <p>Nosso assistente inteligente está pronto para conversar com você sobre IA nos negócios.</p>
 </body>
 </html>
