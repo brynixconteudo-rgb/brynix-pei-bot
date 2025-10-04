@@ -1,85 +1,76 @@
-const { google } = require('googleapis');
-const { format } = require('date-fns');
+const { google } = require("googleapis");
+const { JWT } = require("google-auth-library");
 
-// Autenticação com Service Account via GOOGLE_SA_JSON
-const auth = new google.auth.GoogleAuth({
-  credentials: JSON.parse(process.env.GOOGLE_SA_JSON),
-  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+const sheets = google.sheets("v4");
+
+// Autenticação via Service Account
+const auth = new JWT({
+  email: process.env.GOOGLE_CLIENT_EMAIL,
+  key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
 });
 
-const sheets = google.sheets({ version: 'v4', auth });
+// ID da planilha e nome da aba
+const SPREADSHEET_ID = process.env.SHEETS_SPREADSHEET_ID;
+const SHEET_NAME = "Leads";
 
-const SHEET_ID = process.env.SHEETS_SPREADSHEET_ID;
+// Cabeçalhos esperados na planilha
+const HEADERS = [
+  "nome",
+  "email",
+  "whatsapp",
+  "empresa",
+  "porte",
+  "desafio",
+  "classificacao",
+  "origem",
+  "tipo_interacao",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "request_id",
+  "ip_hash",
+  "data_hora",
+];
 
-async function getSheetMetadata() {
-  const response = await sheets.spreadsheets.get({
-    spreadsheetId: SHEET_ID,
+// Função para adicionar um novo lead
+async function appendLead(data) {
+  const now = new Date().toISOString();
+
+  const values = [
+    HEADERS.map((header) =>
+      header === "data_hora" ? now : data[header] || ""
+    ),
+  ];
+
+  await sheets.spreadsheets.values.append({
+    auth,
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!A1`,
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: {
+      values,
+    },
   });
-  return response.data;
 }
 
-async function getSheetTabs() {
-  try {
-    const metadata = await getSheetMetadata();
-    const tabs = metadata.sheets.map(sheet => sheet.properties.title);
-    return tabs;
-  } catch (error) {
-    console.error('Erro ao buscar abas:', error);
-    throw error;
-  }
-}
-
-async function appendLead(leadData) {
-  const tab = 'Dados_Projeto';
-  const values = [[
-    new Date().toISOString(),
-    leadData.origem || '',
-    leadData.nome || '',
-    leadData.email || '',
-    leadData.whatsapp || '',
-    leadData.empresa || '',
-    leadData.porte || '',
-    leadData.desafio || '',
-    leadData.classificacao || '',
-    leadData.tipo_interacao || '',
-    leadData.request_id || '',
-    leadData.ip_hash || ''
-  ]];
-
-  try {
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SHEET_ID,
-      range: `${tab}!A1`,
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: { values }
-    });
-  } catch (error) {
-    console.error('Erro ao inserir lead:', error);
-    throw error;
-  }
-}
-
-async function appendLog(message) {
-  const tab = 'Atualizacao_LOG';
-  const values = [[format(new Date(), 'yyyy-MM-dd HH:mm:ss'), message]];
-
-  try {
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SHEET_ID,
-      range: `${tab}!A1`,
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: { values }
-    });
-  } catch (error) {
-    console.error('Erro ao gravar log:', error);
-  }
+// Função de log (opcional)
+async function appendLog(msg) {
+  const now = new Date().toISOString();
+  await sheets.spreadsheets.values.append({
+    auth,
+    spreadsheetId: SPREADSHEET_ID,
+    range: "Logs!A1",
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: {
+      values: [[now, msg]],
+    },
+  });
 }
 
 module.exports = {
-  getSheetMetadata,
-  getSheetTabs,
   appendLead,
-  appendLog
+  appendLog,
 };
