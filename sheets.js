@@ -34,7 +34,7 @@ async function appendLeadRow(rowValues, sheetName = "Leads") {
   const range = `${sheetName}!A1`;
 
   try {
-    // 🔍 LOG: Nomes das abas visíveis na planilha
+    // 🔍 Mostra as abas visíveis
     const metadata = await sheets.spreadsheets.get({
       spreadsheetId: SHEET_ID,
     });
@@ -42,7 +42,7 @@ async function appendLeadRow(rowValues, sheetName = "Leads") {
     const sheetNames = metadata.data.sheets.map(s => s.properties.title);
     console.log("📋 Abas visíveis na planilha:", sheetNames);
 
-    // Envia os dados para a aba
+    // ➕ Envia os dados
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
       range,
@@ -55,7 +55,13 @@ async function appendLeadRow(rowValues, sheetName = "Leads") {
 
     console.log("✅ Lead registrado com sucesso.");
   } catch (err) {
-    console.error("❌ Erro ao registrar lead:", err.response?.data || err);
+    if (err.response) {
+      console.error("❌ Erro ao registrar lead:");
+      console.error("Status:", err.response.status);
+      console.error("Mensagem:", JSON.stringify(err.response.data, null, 2));
+    } else {
+      console.error("❌ Erro inesperado:", err.message || err);
+    }
     throw err;
   }
 }
