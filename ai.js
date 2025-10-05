@@ -4,11 +4,14 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-async function gerarResposta(mensagem, sessao) {
-  const historicoFormatado = sessao.historico?.map(m => ({
-    role: m.de === "usuario" ? "user" : "assistant",
-    content: m.texto
-  })) || [];
+async function gerarResposta(mensagem, sessao = {}) {
+  // Protege contra historico undefined ou inválido
+  const historicoFormatado = Array.isArray(sessao.historico)
+    ? sessao.historico.map(m => ({
+        role: m.de === "usuario" ? "user" : "assistant",
+        content: m.texto
+      }))
+    : [];
 
   const prompt = [
     {
@@ -69,14 +72,19 @@ Com base nisso, classifique como:
 
     const jsonBruto = completion.choices[0].message.content;
 
+    // Tenta parsear JSON da IA
     const json = JSON.parse(jsonBruto);
+
     return {
-      resposta: json.resposta,
+      resposta: json.resposta || "Desculpe, não entendi. Pode repetir?",
       coleta: json.coleta || {}
     };
   } catch (e) {
     console.error("Erro ao interpretar resposta da IA:", e);
-    return { resposta: "Desculpe, não entendi. Pode repetir?", coleta: {} };
+    return {
+      resposta: "Desculpe, tive um erro ao processar sua pergunta. Pode repetir de outro jeito?",
+      coleta: {}
+    };
   }
 }
 
