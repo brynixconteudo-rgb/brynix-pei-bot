@@ -12,7 +12,7 @@ const sheets = google.sheets({ version: "v4", auth });
 async function salvarLead({
   timestamp = new Date().toLocaleString("pt-BR"),
   origem = "Chat PEI",
-  nome,
+  nome = "",
   email = "",
   whatsapp = "",
   empresa = "",
@@ -53,9 +53,10 @@ async function salvarLead({
         values: valores,
       },
     });
+    console.log("✅ Lead salvo com sucesso na planilha.");
     return true;
   } catch (error) {
-    console.error("Erro ao gravar na planilha:", error.message);
+    console.error("❌ Erro ao gravar na planilha:", error.message);
     return false;
   }
 }
