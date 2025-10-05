@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { google } = require('googleapis');
-const { gerarResposta } = require('./ai');
+const gerarResposta = require('./ai'); // Correção aqui!
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -76,14 +76,14 @@ app.post('/pei/test', async (req, res) => {
 // ========== ROTA DE CONVERSA COM IA ==========
 app.post('/pei/ia', async (req, res) => {
   try {
-    const { pergunta } = req.body;
+    const { pergunta, sessao } = req.body;
 
     if (!pergunta) {
       return res.status(400).json({ error: 'Campo "pergunta" é obrigatório.' });
     }
 
-    const resposta = await gerarResposta(pergunta);
-    res.status(200).json({ resposta });
+    const resposta = await gerarResposta(pergunta, sessao);
+    res.status(200).json(resposta);
   } catch (error) {
     console.error('Erro na IA:', error);
     res.status(500).json({ error: 'Erro ao gerar resposta da IA.' });
