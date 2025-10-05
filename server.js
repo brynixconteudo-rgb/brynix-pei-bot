@@ -77,8 +77,7 @@ app.post('/pei/test', async (req, res) => {
 app.post('/pei/ia', async (req, res) => {
   try {
     const pergunta = req.body.pergunta || req.body.mensagem; // <-- Flexível para front antigo ou novo
-    const sessao = req.body.sessao || null;
-
+    const sessao = req.body.sessao || {};
     if (!pergunta) {
       return res.status(400).json({ error: 'Campo "pergunta" ou "mensagem" é obrigatório.' });
     }
