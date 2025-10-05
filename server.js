@@ -1,10 +1,9 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const { gerarResposta } = require(".src/ai");
-const { registrarLead } = require(".src/sheets");
-const app = express();
-const port = process.env.PORT || 3001;
+const { gerarResposta } = require('./ai');            // OK
+const { registrarLead } = require('./sheets');        // OK
+const { handlePEI } = require('./apps/pei/pei.js');   // OK
 
 app.use(cors());
 app.use(bodyParser.json());
