@@ -3,9 +3,126 @@
 <head>
   <meta charset="UTF-8" />
   <title>BRYNIX PEI</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f4f4f4;
+      color: #333;
+    }
+
+    h1 {
+      color: #111;
+    }
+
+    .chatbox {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .messages {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 15px;
+      padding-right: 10px;
+    }
+
+    .user-msg, .ia-msg {
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      max-width: 80%;
+      clear: both;
+    }
+
+    .user-msg {
+      background-color: #DCF8C6;
+      float: right;
+      text-align: right;
+    }
+
+    .ia-msg {
+      background-color: #F0F0F0;
+      float: left;
+    }
+
+    .input-area {
+      display: flex;
+      gap: 10px;
+    }
+
+    .input-area input {
+      flex: 1;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    .input-area button {
+      padding: 10px 16px;
+      border: none;
+      background-color: #111;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .input-area button:hover {
+      background-color: #444;
+    }
+  </style>
 </head>
 <body>
-  <h1>Seja bem-vindo à BRYNIX!</h1>
-  <p>Nosso assistente inteligente está pronto para conversar com você sobre IA nos negócios.</p>
+
+  <div class="chatbox">
+    <h1>Seja bem-vindo à <strong>BRYNIX</strong>!</h1>
+    <p>Nosso assistente inteligente está pronto para conversar com você sobre IA nos negócios.</p>
+
+    <div class="messages" id="messages"></div>
+
+    <div class="input-area">
+      <input type="text" id="pergunta" placeholder="Digite sua pergunta..." />
+      <button onclick="enviarPergunta()">Enviar</button>
+    </div>
+  </div>
+
+  <script>
+    async function enviarPergunta() {
+      const perguntaInput = document.getElementById('pergunta');
+      const pergunta = perguntaInput.value.trim();
+      if (!pergunta) return;
+
+      adicionarMensagem(pergunta, 'user');
+
+      perguntaInput.value = '';
+      const resposta = await fetch('/pei/ia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pergunta })
+      }).then(res => res.json());
+
+      if (resposta.resposta) {
+        adicionarMensagem(resposta.resposta, 'ia');
+      } else {
+        adicionarMensagem('Desculpe, não consegui entender.', 'ia');
+      }
+    }
+
+    function adicionarMensagem(texto, tipo) {
+      const messagesDiv = document.getElementById('messages');
+      const msg = document.createElement('div');
+      msg.className = tipo === 'user' ? 'user-msg' : 'ia-msg';
+      msg.innerText = texto;
+      messagesDiv.appendChild(msg);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+  </script>
+
 </body>
 </html>
