@@ -1,82 +1,81 @@
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const { google } = require('googleapis');
-const gerarResposta = require('./ai');
+const express = require("express");
+const bodyParser = require("body-parser");
+const path = require("path");
+const { google } = require("googleapis");
 
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3001;
 
-// Middlewares
-app.use(cors());
+// Middleware
 app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, "public"))); // Servir arquivos da pasta public
 
-// Rota raiz
-app.get('/', (req, res) => {
-  res.send('BRYNIX PEI BOT online ✨');
+// Autenticação com Google Sheets via Service Account
+const auth = new google.auth.GoogleAuth({
+  credentials: JSON.parse(process.env.GOOGLE_SA_JSON),
+  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
 });
+const sheets = google.sheets({ version: "v4", auth });
 
-// Rota de teste de lead (ex: POST via formulário)
-app.post('/pei/test', async (req, res) => {
-  const { nome, contato, empresa, porte, desafio, classificacao, tipoInteracao, origem } = req.body;
+// ID da planilha e nome da aba
+const SPREADSHEET_ID = process.env.SHEETS_SPREADSHEET_ID;
+const SHEET_NAME = "Leads";
 
-  if (!nome || !contato) {
-    return res.status(400).json({ erro: 'Campos obrigatórios ausentes: nome ou contato' });
-  }
+// Cabeçalhos da planilha (esperados na ordem correta)
+const HEADERS = [
+  "data_hora",
+  "nome",
+  "email",
+  "whatsapp",
+  "empresa",
+  "porte",
+  "desafio",
+  "classificacao"
+];
+
+// Endpoint para registrar lead
+app.post("/pei/test", async (req, res) => {
+  const { nome, email, whatsapp, empresa, porte, desafio, classificacao } = req.body;
+
+  const novaLinha = [
+    new Date().toLocaleString("pt-BR"),
+    nome,
+    email,
+    whatsapp,
+    empresa,
+    porte,
+    desafio,
+    classificacao || "morno"
+  ];
 
   try {
-    const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(process.env.GOOGLE_SA_JSON),
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
-
-    const sheets = google.sheets({ version: 'v4', auth });
-    const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
-
-    const values = [[
-      new Date().toLocaleString('pt-BR'),
-      nome,
-      contato,
-      empresa || '',
-      porte || '',
-      desafio || '',
-      classificacao || '',
-      tipoInteracao || '',
-      origem || '',
-    ]];
-
     await sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: 'Leads!A2',
-      valueInputOption: 'USER_ENTERED',
-      resource: { values },
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A1`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [novaLinha],
+      },
     });
 
-    res.status(200).json({ mensagem: 'Lead registrado com sucesso!' });
-  } catch (erro) {
-    console.error('Erro ao registrar lead:', erro);
-    res.status(500).json({ erro: 'Erro ao salvar lead' });
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro ao registrar lead:", error.message);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Rota de conversa com IA
-app.post('/pei/ia', async (req, res) => {
-  const { mensagem } = req.body;
-
-  if (!mensagem) {
-    return res.status(400).json({ erro: 'Mensagem não fornecida' });
-  }
-
-  try {
-    const resposta = await gerarResposta(mensagem);
-    res.status(200).json({ resposta });
-  } catch (erro) {
-    console.error('Erro IA:', erro);
-    res.status(500).json({ erro: 'Erro ao gerar resposta da IA' });
-  }
+// Rota opcional para exibir o formulário por /formulario
+app.get("/formulario", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "formulario.html"));
 });
 
-// Inicia o servidor
+// Rota raiz opcional (status simples)
+app.get("/", (req, res) => {
+  res.send("BRYNIX PEI BOT online ✨");
+});
+
+// Inicializa o servidor
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
