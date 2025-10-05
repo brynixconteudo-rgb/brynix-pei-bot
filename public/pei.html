@@ -99,18 +99,25 @@
       if (!pergunta) return;
 
       adicionarMensagem(pergunta, 'user');
-
       perguntaInput.value = '';
-      const resposta = await fetch('/pei/ia', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pergunta })
-      }).then(res => res.json());
 
-      if (resposta.resposta) {
-        adicionarMensagem(resposta.resposta, 'ia');
-      } else {
-        adicionarMensagem('Desculpe, não consegui entender.', 'ia');
+      try {
+        const resposta = await fetch('/pei/ia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mensagem: pergunta,
+            sessionId: getSessionId()
+          })
+        }).then(res => res.json());
+
+        if (resposta.resposta) {
+          adicionarMensagem(resposta.resposta, 'ia');
+        } else {
+          adicionarMensagem('Desculpe, não consegui entender.', 'ia');
+        }
+      } catch (e) {
+        adicionarMensagem('Erro ao se comunicar com o servidor.', 'ia');
       }
     }
 
@@ -121,6 +128,15 @@
       msg.innerText = texto;
       messagesDiv.appendChild(msg);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function getSessionId() {
+      let sessionId = localStorage.getItem('sessionId');
+      if (!sessionId) {
+        sessionId = Date.now().toString(36) + Math.random().toString(36).substring(2);
+        localStorage.setItem('sessionId', sessionId);
+      }
+      return sessionId;
     }
   </script>
 
