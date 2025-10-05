@@ -124,14 +124,42 @@
 
   enviarBtn.addEventListener('click', enviarMensagem);
 
-  // Botão de Finalizar
   function finalizarConversa() {
     adicionarMensagem('Obrigado pela conversa! A BRYNIX entrará em contato em breve.', 'ia');
     mensagemInput.disabled = true;
     enviarBtn.disabled = true;
+
+    const dados = {
+      timestamp: new Date().toLocaleString("pt-BR"),
+      origem: 'Chat PEI',
+      nome: sessao?.coletado?.nome || '',
+      email: sessao?.coletado?.email || '',
+      whatsapp: sessao?.coletado?.contato || '',
+      empresa: sessao?.coletado?.empresa || '',
+      porte: sessao?.coletado?.porte || '',
+      desafio: sessao?.coletado?.desafio || '',
+      tipo_interacao: 'chat_finalizado',
+      classificacao: sessao?.coletado?.classificacao || 'morno',
+      utm_source: '',
+      utm_medium: '',
+      utm_campaign: '',
+      request_id: '',
+      ip_hash: ''
+    };
+
+    fetch('/pei/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dados)
+    })
+    .then(() => {
+      console.log('✅ Lead salvo ao finalizar conversa:', dados);
+    })
+    .catch(err => {
+      console.error('❌ Erro ao salvar lead no final da conversa:', err);
+    });
   }
 
-  // Botão de Enviar por E-mail
   function enviarEmail() {
     const conteudo = Array.from(chat.querySelectorAll('p')).map(p => p.textContent).join('\n');
     const email = prompt("Digite seu e-mail para receber a conversa:");
