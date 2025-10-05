@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const gerarResposta = require("../../ai");
-const { salvarLead, registrarLog } = require("../../sheets");
+const { salvarLead } = require("../../sheets");
 
 const sessions = {}; // Armazena dados por sessionId
 
@@ -27,6 +27,14 @@ router.post("/pei/ia", async (req, res) => {
 
   const sessao = sessions[sessionId];
 
+  // Se a sessão estiver finalizada, apenas responde de forma cordial sem reiniciar fluxo
+  if (sessao.finalizada) {
+    const resposta = `Perfeito! Seus dados já foram salvos e nossa equipe entrará em contato em breve. Se tiver mais perguntas ou quiser conversar, estou por aqui. 😊`;
+    sessao.historico.push({ de: "usuario", texto: mensagem });
+    sessao.historico.push({ de: "bot", texto: resposta });
+    return res.json({ resposta });
+  }
+
   try {
     // Prepara contexto para IA
     const contexto = {
@@ -42,17 +50,6 @@ router.post("/pei/ia", async (req, res) => {
 
     const { resposta, coleta } = await gerarResposta(mensagem, contexto);
 
-    // Atualiza histórico da conversa
-    sessao.historico.push({ de: "usuario", texto: mensagem });
-    sessao.historico.push({ de: "bot", texto: resposta });
-
-    // ⛔️ Se a sessão já foi finalizada, apenas responde — sem coleta
-    if (sessao.finalizada) {
-      console.log(`💬 Sessão finalizada anteriormente. Apenas resposta enviada (sessionId: ${sessionId})`);
-      await registrarLog("Sessão Finalizada - Sem nova coleta");
-      return res.json({ resposta });
-    }
-
     // Atualiza os dados coletados na sessão, mas não sobrescreve se já existir
     if (coleta && typeof coleta === "object") {
       for (const [campo, valor] of Object.entries(coleta)) {
@@ -61,6 +58,10 @@ router.post("/pei/ia", async (req, res) => {
         }
       }
     }
+
+    // Atualiza histórico da conversa
+    sessao.historico.push({ de: "usuario", texto: mensagem });
+    sessao.historico.push({ de: "bot", texto: resposta });
 
     // Verifica se todos os dados foram coletados
     const camposObrigatorios = ["nome", "empresa", "contato", "desafio", "classificacao"];
@@ -77,13 +78,17 @@ router.post("/pei/ia", async (req, res) => {
         dataHora: new Date().toISOString()
       });
 
-      await registrarLog("Gravação de Lead - Sucesso");
-      console.log(`✅ Lead salvo com sucesso na planilha (sessionId: ${sessionId})`);
+      console.log(`✅ Lead salvo com sucesso na planilha:`, {
+        nome: sessao.nome,
+        empresa: sessao.empresa,
+        contato: sessao.contato,
+        desafio: sessao.desafio,
+        classificacao: sessao.classificacao
+      });
 
-      // Marca a sessão como finalizada
+      // Marca a sessão como finalizada (mas mantém para caso a pessoa continue interagindo)
       sessao.finalizada = true;
     } else {
-      await registrarLog("Lead Incompleto - Ignorado");
       console.log(`⚠️ Lead incompleto, ainda não salvo (sessionId: ${sessionId})`, {
         coletado: {
           nome: sessao.nome,
@@ -98,7 +103,6 @@ router.post("/pei/ia", async (req, res) => {
     res.json({ resposta });
   } catch (err) {
     console.error("❌ Erro ao processar mensagem:", err);
-    await registrarLog("Erro interno da IA");
     res.status(500).json({ erro: "Erro interno da IA" });
   }
 });
