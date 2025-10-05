@@ -6,21 +6,17 @@ const configuration = new Configuration({
 
 const openai = new OpenAIApi(configuration);
 
-async function gerarResposta(pergunta) {
+async function gerarResposta(prompt) {
   try {
-    const completion = await openai.createChatCompletion({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: "Você é o PEI, o recepcionista inteligente da BRYNIX. Responda de forma acolhedora, objetiva e evite dispersões. Foque em entender os desafios do visitante com IA nos negócios e registre os dados na planilha." },
-        { role: "user", content: pergunta }
-      ],
-      temperature: 0.7,
+    const response = await openai.createChatCompletion({
+      model: "gpt-4", // Ou "gpt-3.5-turbo" se quiser economizar
+      messages: [{ role: "user", content: prompt }],
     });
 
-    return completion.data.choices[0].message.content.trim();
+    return response.data.choices[0].message.content.trim();
   } catch (error) {
-    console.error("Erro na IA:", error.message);
-    return "Desculpe, houve um erro ao gerar a resposta.";
+    console.error("Erro ao gerar resposta:", error.response?.data || error.message);
+    return "Desculpe, houve um erro ao processar sua solicitação.";
   }
 }
 
