@@ -6,7 +6,7 @@ const openai = new OpenAI({
 // Prompt Base (PEI V1.1)
 function construirPrompt(historico, sessao) {
   const intro = `
-Você é o PEI (Porta de Entrada Inteligente), um assistente de recepção da BRYNIX.
+Você é a ALICE módulo de Inteligência Artificial preparada para apoiar os clientes da BRYNIX, um assistente de recepção da BRYNIX.
 
 🧠 Sua missão é recepcionar visitantes do site com leveza, inteligência e simpatia — conduzindo uma conversa fluida, humana e profissional.
 
@@ -45,16 +45,16 @@ Você é o PEI (Porta de Entrada Inteligente), um assistente de recepção da BR
   return `${intro}\n\n${historicoTexto}\n\nPEI:`;
 }
 
-// RegEx para extração de dados
+// 🔧 RegExs aprimoradas para extrair dados de forma flexível
 function extrairDados(resposta) {
   const coleta = {};
 
   const regexes = {
-    nome: /(?:meu nome (?:é|sou|chamo-me)|sou o|sou a)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s[A-ZÀ-Ú][a-zà-ú]+)*)/i,
-    empresa: /(?:minha empresa|empresa (?:chama-se|se chama|é|nome é))[:\-]?\s*([A-Z0-9&.\- ]{3,})/i,
+    nome: /(?:meu nome é|me chamo|sou o|sou a|sou)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s[A-ZÀ-Ú][a-zà-ú]+)?)/i,
+    empresa: /(?:minha empresa|empresa (?:chama-se|se chama|é|nome é)|sou (?:da|do|de)\s+(?:loja|empresa)?\s*|trabalho (?:na|no|em)\s+)([A-Z0-9&.\- ]{3,})/i,
     contato: /(\(?\d{2}\)?\s?\d{4,5}[-\s]?\d{4})|([a-z0-9_.+-]+@[a-z0-9-]+\.[a-z.]+)/i,
     porte: /\b(micro|pequena|média|grande)\b/i,
-    desafio: /(desafio|problema|dificuldade|questão|objetivo)[^.!?]{5,}/i,
+    desafio: /(?:desafio|problema|dificuldade|questão|objetivo)[^.!?]{5,}/i,
     classificacao: /\b(quente|morno|frio)\b/i
   };
 
@@ -68,9 +68,10 @@ function extrairDados(resposta) {
   return coleta;
 }
 
-// Função principal da IA
+// 🤖 Função principal da IA
 async function gerarResposta(mensagem, sessao = {}) {
   try {
+    // Garantir estrutura esperada
     if (typeof sessao !== 'object' || sessao === null) sessao = {};
     if (!Array.isArray(sessao.historico)) sessao.historico = [];
     if (typeof sessao.coletado !== 'object' || sessao.coletado === null) sessao.coletado = {};
@@ -99,7 +100,7 @@ async function gerarResposta(mensagem, sessao = {}) {
     // Extrai dados da interação
     const dadosExtraidos = extrairDados(`${mensagem}\n${resposta}`);
 
-    for (const chave in dadosExtraidos) {
+    for (const chave in dadosExtrairos) {
       if (!sessao.coletado[chave]) {
         sessao.coletado[chave] = dadosExtraidos[chave];
       }
@@ -122,6 +123,7 @@ async function gerarResposta(mensagem, sessao = {}) {
 A equipe da BRYNIX vai falar com você em breve para entender melhor o seu cenário e te mostrar como nossas soluções de IA podem gerar valor real para o seu negócio.
 
 Obrigado por compartilhar tudo com a gente. Foi ótimo conversar com você! 👋`;
+
       return {
         resposta: fechamento,
         coleta: sessao.coletado
