@@ -1,10 +1,8 @@
-const { Configuration, OpenAIApi } = require("openai");
+const OpenAI = require("openai");
 
-const configuration = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-const openai = new OpenAIApi(configuration);
 
 async function gerarResposta(mensagem, sessao) {
   const historicoFormatado = sessao.historico?.map(m => ({
@@ -62,14 +60,14 @@ Com base nisso, classifique como:
   ];
 
   try {
-    const completion = await openai.createChatCompletion({
+    const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: prompt,
       temperature: 0.6,
-      max_tokens: 1000
+      max_tokens: 1000,
     });
 
-    const jsonBruto = completion.data.choices[0].message.content;
+    const jsonBruto = completion.choices[0].message.content;
 
     const json = JSON.parse(jsonBruto);
     return {
