@@ -1,52 +1,57 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { appendLead } = require('../../sheets');
-const { gerarResposta } = require('../../ai');
+const gerarResposta = require("../../ai");
+const { salvarLead } = require("../../sheets");
 
-router.post('/ia', async (req, res) => {
-  try {
-    const history = req.body.history || [];
-    const lastInput = req.body.lastInput || '';
+const sessions = {}; // Armazena dados por sessionId
 
-    const conversa = history.map(msg => msg.content).join(' ') + ' ' + lastInput;
+router.post("/pei", async (req, res) => {
+  const { mensagem, sessionId } = req.body;
 
-    const respostaIA = await gerarResposta(conversa);
-
-    // Heurística para salvar: nome, contato, desafio
-    const temNome = /meu nome é|eu sou o|sou /.test(conversa.toLowerCase());
-    const temContato = /@|whats|telefone|celular/.test(conversa.toLowerCase());
-    const temDesafio = /preciso|quero|estou com|buscando|desafio/.test(conversa.toLowerCase());
-
-    let salvou = false;
-
-    if (temNome && temContato && temDesafio) {
-      const data = {
-        nome: 'Visitante do site',
-        email: '',
-        whatsapp: '',
-        empresa: 'BRYNIX',
-        porte: 'Não informado',
-        desafio: lastInput,
-        classificacao: 'morno',
-        origem: 'site',
-        tipo_interacao: 'conversa livre',
-        utm_source: '',
-        utm_medium: '',
-        utm_campaign: '',
-        request_id: '',
-        ip_hash: ''
-      };
-
-      await appendLead(data);
-      salvou = true;
-    }
-
-    return res.json({ reply: respostaIA, saved: salvou });
-
-  } catch (error) {
-    console.error('Erro na IA:', error.message);
-    return res.status(500).json({ error: 'Erro ao processar IA' });
+  // Inicia sessão se necessário
+  if (!sessions[sessionId]) {
+    sessions[sessionId] = {
+      nome: null,
+      empresa: null,
+      contato: null,
+      desafio: null,
+      classificacao: null,
+      historico: []
+    };
   }
+
+  const sessao = sessions[sessionId];
+  sessao.historico.push({ de: "usuario", texto: mensagem });
+
+  // Envia a mensagem para a IA com histórico e dados atuais
+  const { resposta, coleta } = await gerarResposta(mensagem, sessao);
+
+  // Atualiza dados coletados, se houver
+  Object.entries(coleta || {}).forEach(([campo, valor]) => {
+    if (valor && !sessao[campo]) {
+      sessao[campo] = valor;
+    }
+  });
+
+  sessao.historico.push({ de: "bot", texto: resposta });
+
+  // Verifica se todos os campos foram preenchidos
+  const completo = sessao.nome && sessao.empresa && sessao.contato && sessao.desafio && sessao.classificacao;
+
+  if (completo) {
+    await salvarLead({
+      nome: sessao.nome,
+      empresa: sessao.empresa,
+      contato: sessao.contato,
+      desafio: sessao.desafio,
+      classificacao: sessao.classificacao,
+      origem: "Chat PEI",
+      dataHora: new Date().toISOString()
+    });
+    delete sessions[sessionId]; // Limpa sessão após salvar
+  }
+
+  res.json({ resposta });
 });
 
 module.exports = router;
