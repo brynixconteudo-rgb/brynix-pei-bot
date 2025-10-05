@@ -2,14 +2,14 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { google } = require('googleapis');
-const gerarResposta = require('./ai'); // Correção aqui!
+const gerarResposta = require('./ai'); // Certifique-se de que este arquivo está correto
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static('public')); // para servir arquivos como pei.html
+app.use(express.static('public')); // Serve pei.html e outros arquivos estáticos
 
 // ========== AUTENTICAÇÃO COM GOOGLE SHEETS ==========
 const auth = new google.auth.GoogleAuth({
@@ -76,10 +76,11 @@ app.post('/pei/test', async (req, res) => {
 // ========== ROTA DE CONVERSA COM IA ==========
 app.post('/pei/ia', async (req, res) => {
   try {
-    const { pergunta, sessao } = req.body;
+    const pergunta = req.body.pergunta || req.body.mensagem; // <-- Flexível para front antigo ou novo
+    const sessao = req.body.sessao || null;
 
     if (!pergunta) {
-      return res.status(400).json({ error: 'Campo "pergunta" é obrigatório.' });
+      return res.status(400).json({ error: 'Campo "pergunta" ou "mensagem" é obrigatório.' });
     }
 
     const resposta = await gerarResposta(pergunta, sessao);
