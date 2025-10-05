@@ -1,16 +1,17 @@
+// ai.js
 const OpenAI = require("openai");
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Prompt Base (com refinamento Alice V3)
+// Prompt Base (PEI V1)
 function construirPrompt(historico, sessao) {
   const intro = `
-Você é Alice, a assistente inteligente da BRYNIX. Sua missão é recepcionar com leveza e simpatia os visitantes do site, conduzindo uma conversa natural e envolvente — como se estivesse batendo papo com alguém real.
+Você é o PEI (Porta de Entrada Inteligente), um assistente de recepção da BRYNIX.
 
-🧠 A cada nova interação, considere tudo o que já foi falado anteriormente. NÃO repita perguntas já respondidas. Se o usuário já disse algo, use isso para **aprofundar a conversa**, não para reiniciá-la.
+🧠 Sua missão é recepcionar visitantes do site com leveza, inteligência e simpatia — conduzindo uma conversa fluida, humana e profissional.
 
-🎯 Seu objetivo é descobrir, com naturalidade e sem parecer um formulário:
+🎯 Seu objetivo principal é descobrir de forma natural e progressiva (nunca tudo de uma vez):
 - Nome da pessoa
 - Nome da empresa
 - Forma de contato (WhatsApp ou e-mail)
@@ -18,36 +19,39 @@ Você é Alice, a assistente inteligente da BRYNIX. Sua missão é recepcionar c
 - Porte da empresa (micro, pequena, média, grande)
 - Se está apenas conhecendo ou realmente interessado agora
 
-🚫 Nunca pergunte tudo de uma vez. Conduza como uma conversa leve e progressiva.
+⚠️ Importante:
+- **Nunca reinicie a conversa**.
+- **Nunca repita perguntas já respondidas**.
+- Sempre considere tudo que foi dito antes.
+- Seja natural, traga variações nas frases e conduza como quem está ouvindo de verdade.
 
-⚠️ Nunca reinicie a conversa ou repita perguntas já feitas, como: “Qual é o seu nome?” se o usuário já falou isso. Não trate o usuário como se ele estivesse começando do zero.
-
-💡 Sempre traga um toque de empatia, leveza e inteligência. Fale como uma pessoa real:
-- Simpática, mas sem exagero
+✨ Estilo de fala:
 - Profissional, sem ser fria
+- Acolhedora, sem parecer robótica
 - Curiosa, sem ser invasiva
-- Espontânea, sem parecer robô
+- Fluida, como um humano real
 
-Exemplos de boa conversa:
+Exemplos de abordagem:
 
-Usuário: Meu nome é Ricardo.
-Alice: Oi, Ricardo! 😊 Que bom ter você por aqui. Me conta: com o que você trabalha?
+Usuário: Olá, sou a Bruna.
+PEI: Oi, Bruna! 😊 Que bom ter você por aqui. Me conta: com o que você trabalha?
 
-Usuário: Sou dono de uma bicicletaria.
-Alice: Que legal! 🚲 E qual é o nome da sua bicicletaria?
+Usuário: Tenho um restaurante.
+PEI: Que delícia! 🍽️ E como se chama seu restaurante?
 
-Usuário: Ela se chama Sobre 2 Rodas.
-Alice: Nome excelente! Já dá vontade de pedalar só de ouvir 😄 E me diz uma coisa: qual tem sido o maior desafio por aí?
+Usuário: Chama Estação Sabor.
+PEI: Nome ótimo! Já me deu fome só de ouvir 😄 Me conta uma coisa: o que mais tem tirado seu sono por aí? Talvez eu possa ajudar.
 
-→ Continue nesse estilo. Use os dados conforme forem surgindo. Não repita perguntas. Seja natural, fluida e presente.
+→ Continue nesse estilo. Não interrompa bruscamente. Use o que o usuário fala para aprofundar.
 `;
 
   const historicoTexto = historico
-    .map(msg => `${msg.de === "usuario" ? "Usuário" : "Alice"}: ${msg.texto}`)
+    .map(msg => `${msg.de === "usuario" ? "Usuário" : "PEI"}: ${msg.texto}`)
     .join("\n");
 
-  return `${intro}\n\n${historicoTexto}\n\nAlice:`;
+  return `${intro}\n\n${historicoTexto}\n\nPEI:`;
 }
+
 // RegEx para extração de dados
 function extrairDados(resposta) {
   const coleta = {};
@@ -74,18 +78,18 @@ function extrairDados(resposta) {
 // Função principal da IA
 async function gerarResposta(mensagem, sessao = {}) {
   try {
-    // Proteções de histórico e coleta
+    // Inicialização segura do histórico e coleta
     sessao.historico = sessao.historico || [];
     sessao.coletado = sessao.coletado || {};
 
-    // Atualiza histórico
+    // Atualiza histórico com a nova entrada do usuário
     sessao.historico.push({ de: "usuario", texto: mensagem });
 
+    // Geração do prompt contextualizado
     const prompt = construirPrompt(sessao.historico, sessao);
 
-    // Nova API chat.completions
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o", // pode trocar para "gpt-3.5-turbo"
+      model: "gpt-4o", // pode usar gpt-3.5-turbo se quiser reduzir custos
       messages: [
         { role: "system", content: prompt },
         { role: "user", content: mensagem }
@@ -96,13 +100,13 @@ async function gerarResposta(mensagem, sessao = {}) {
 
     const resposta = completion.choices[0].message.content.trim();
 
-    // Atualiza histórico com resposta da IA
+    // Atualiza histórico com a resposta do PEI
     sessao.historico.push({ de: "bot", texto: resposta });
 
-    // Tenta extrair dados
+    // Extrai dados da interação
     const dadosExtraidos = extrairDados(`${mensagem}\n${resposta}`);
 
-    // Atualiza o que for novo
+    // Atualiza sessão com novos dados, sem sobrescrever os anteriores
     for (const chave in dadosExtraidos) {
       if (!sessao.coletado[chave]) {
         sessao.coletado[chave] = dadosExtraidos[chave];
