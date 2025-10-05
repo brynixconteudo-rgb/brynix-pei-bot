@@ -1,10 +1,10 @@
-const { ChatOpenAI } = require("langchain/chat_models/openai");
+const { Configuration, OpenAIApi } = require("openai");
 
-const chat = new ChatOpenAI({
-  openAIApiKey: process.env.OPENAI_API_KEY,
-  temperature: 0.6,
-  modelName: "gpt-4"
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
 });
+
+const openai = new OpenAIApi(configuration);
 
 async function gerarResposta(mensagem, sessao) {
   const historicoFormatado = sessao.historico?.map(m => ({
@@ -55,26 +55,31 @@ Com base nisso, classifique como:
     "classificacao": "quente|morno|frio"
   }
 }
-`
-      `.trim()
+`.trim()
     },
     ...historicoFormatado,
     { role: "user", content: mensagem }
   ];
 
-  const completion = await chat.call(prompt);
-  const jsonBruto = completion?.content;
-
   try {
+    const completion = await openai.createChatCompletion({
+      model: "gpt-4",
+      messages: prompt,
+      temperature: 0.6,
+      max_tokens: 1000
+    });
+
+    const jsonBruto = completion.data.choices[0].message.content;
+
     const json = JSON.parse(jsonBruto);
     return {
       resposta: json.resposta,
       coleta: json.coleta || {}
     };
   } catch (e) {
-    console.error("Erro ao interpretar resposta da IA:", jsonBruto);
+    console.error("Erro ao interpretar resposta da IA:", e);
     return { resposta: "Desculpe, não entendi. Pode repetir?", coleta: {} };
   }
 }
-'
+
 module.exports = gerarResposta;
