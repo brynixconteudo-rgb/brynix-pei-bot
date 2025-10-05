@@ -2,8 +2,8 @@
   "name": "brynix-pei-bot",
   "version": "1.0.0",
   "description": "Assistente inteligente de recepção da BRYNIX",
-  "main": "server.js",
-"scripts": {
+  "main": "src/server.js",
+  "scripts": {
   "start": "node server.js"
 },
   "dependencies": {
