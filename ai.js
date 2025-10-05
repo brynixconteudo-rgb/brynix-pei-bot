@@ -1,9 +1,8 @@
-const { Configuration, OpenAIApi } = require("openai");
+const OpenAI = require("openai");
 
-const configuration = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-const openai = new OpenAIApi(configuration);
 
 // Define prompt base de boas-vindas e coleta
 function construirPrompt(historico, sessao) {
@@ -60,31 +59,31 @@ function extrairDados(resposta) {
 // Função principal exportada
 async function gerarResposta(mensagem, sessao = {}) {
   try {
-    // Proteção para o histórico
     sessao.historico = sessao.historico || [];
     sessao.historico.push({ de: "usuario", texto: mensagem });
 
     const prompt = construirPrompt(sessao.historico, sessao);
 
-    const completion = await openai.createCompletion({
+    const completion = await openai.completions.create({
       model: "text-davinci-003",
       prompt,
       max_tokens: 300,
       temperature: 0.7,
     });
 
-    const resposta = completion.data.choices[0].text.trim();
+    const resposta = completion.choices[0].text.trim();
 
-    // Salva resposta no histórico
     sessao.historico.push({ de: "bot", texto: resposta });
 
-    // Tenta coletar dados
     const coleta = extrairDados(`${mensagem}\n${resposta}`);
 
     return { resposta, coleta };
   } catch (erro) {
     console.error("Erro em gerarResposta:", erro.message);
-    return { resposta: "Desculpe, houve um erro ao gerar a resposta. Pode tentar novamente?", coleta: {} };
+    return {
+      resposta: "Desculpe, houve um erro ao gerar a resposta. Pode tentar novamente?",
+      coleta: {},
+    };
   }
 }
 
