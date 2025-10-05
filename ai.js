@@ -100,7 +100,7 @@ async function gerarResposta(mensagem, sessao = {}) {
     // Extrai dados da interação
     const dadosExtraidos = extrairDados(`${mensagem}\n${resposta}`);
 
-    for (const chave in dadosExtrairos) {
+    for (const chave in dadosExtraidos) {
       if (!sessao.coletado[chave]) {
         sessao.coletado[chave] = dadosExtraidos[chave];
       }
