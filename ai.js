@@ -1,5 +1,6 @@
-const OpenAI = require("openai");
+const { OpenAI } = require("openai");
 
+// Criação da instância do OpenAI com a API key via env
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -38,18 +39,18 @@ function extrairDados(resposta) {
   const coleta = {};
 
   const regexes = {
-    nome: /meu nome (é|chama-se|é o|sou o|sou a)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s[A-ZÀ-Ú][a-zà-ú]+)*)/i,
-    empresa: /empresa (se chama|é|chama-se|seu nome é)?\s*[:\-]?\s*([A-Z0-9&.\- ]{3,})/i,
+    nome: /(?:meu nome (?:é|chama-se|é o|sou o|sou a)|sou)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s[A-ZÀ-Ú][a-zà-ú]+)?)/i,
+    empresa: /(?:empresa (?:se chama|é|chama-se|seu nome é)?\s*[:\-]?\s*)([A-Z0-9&.\- ]{3,})/i,
     contato: /(\(?\d{2}\)?\s?\d{4,5}[-\s]?\d{4})|([a-z0-9_.+-]+@[a-z0-9-]+\.[a-z.]+)/i,
     porte: /\b(micro|pequena|média|grande)\b/i,
     desafio: /(desafio|problema|dificuldade|questão)[^.!?]{5,}/i,
-    classificacao: /\b(quente|morno|frio)\b/i
+    classificacao: /\b(quente|morno|frio)\b/i,
   };
 
   for (const campo in regexes) {
     const match = resposta.match(regexes[campo]);
     if (match) {
-      coleta[campo] = match[2] || match[1];
+      coleta[campo] = match[1] || match[2];
     }
   }
 
@@ -59,22 +60,25 @@ function extrairDados(resposta) {
 // Função principal exportada
 async function gerarResposta(mensagem, sessao = {}) {
   try {
+    // Proteção para o histórico
     sessao.historico = sessao.historico || [];
     sessao.historico.push({ de: "usuario", texto: mensagem });
 
     const prompt = construirPrompt(sessao.historico, sessao);
 
-    const completion = await openai.completions.create({
-      model: "text-davinci-003",
-      prompt,
-      max_tokens: 300,
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
+      max_tokens: 300,
     });
 
-    const resposta = completion.choices[0].text.trim();
+    const resposta = completion.choices[0].message.content.trim();
 
+    // Salva resposta no histórico
     sessao.historico.push({ de: "bot", texto: resposta });
 
+    // Tenta coletar dados
     const coleta = extrairDados(`${mensagem}\n${resposta}`);
 
     return { resposta, coleta };
