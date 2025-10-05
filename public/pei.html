@@ -93,52 +93,43 @@
   </div>
 
   <script>
-    async function enviarPergunta() {
-      const perguntaInput = document.getElementById('pergunta');
-      const pergunta = perguntaInput.value.trim();
-      if (!pergunta) return;
+  // Gera ou recupera sessionId
+  const sessionId = localStorage.getItem('sessionId') || crypto.randomUUID();
+  localStorage.setItem('sessionId', sessionId);
 
-      adicionarMensagem(pergunta, 'user');
-      perguntaInput.value = '';
+  async function enviarPergunta() {
+    const perguntaInput = document.getElementById('pergunta');
+    const pergunta = perguntaInput.value.trim();
+    if (!pergunta) return;
 
-      try {
-        const resposta = await fetch('/pei/ia', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            mensagem: pergunta,
-            sessionId: getSessionId()
-          })
-        }).then(res => res.json());
+    adicionarMensagem(pergunta, 'user');
+    perguntaInput.value = '';
 
-        if (resposta.resposta) {
-          adicionarMensagem(resposta.resposta, 'ia');
-        } else {
-          adicionarMensagem('Desculpe, não consegui entender.', 'ia');
-        }
-      } catch (e) {
-        adicionarMensagem('Erro ao se comunicar com o servidor.', 'ia');
-      }
+    const resposta = await fetch('/pei/ia', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mensagem: pergunta,
+        sessionId: sessionId
+      })
+    }).then(res => res.json());
+
+    if (resposta.resposta) {
+      adicionarMensagem(resposta.resposta, 'ia');
+    } else {
+      adicionarMensagem('Desculpe, não consegui entender.', 'ia');
     }
+  }
 
-    function adicionarMensagem(texto, tipo) {
-      const messagesDiv = document.getElementById('messages');
-      const msg = document.createElement('div');
-      msg.className = tipo === 'user' ? 'user-msg' : 'ia-msg';
-      msg.innerText = texto;
-      messagesDiv.appendChild(msg);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    }
-
-    function getSessionId() {
-      let sessionId = localStorage.getItem('sessionId');
-      if (!sessionId) {
-        sessionId = Date.now().toString(36) + Math.random().toString(36).substring(2);
-        localStorage.setItem('sessionId', sessionId);
-      }
-      return sessionId;
-    }
-  </script>
+  function adicionarMensagem(texto, tipo) {
+    const messagesDiv = document.getElementById('messages');
+    const msg = document.createElement('div');
+    msg.className = tipo === 'user' ? 'user-msg' : 'ia-msg';
+    msg.innerText = texto;
+    messagesDiv.appendChild(msg);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+</script>
 
 </body>
 </html>
