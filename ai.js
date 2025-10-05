@@ -1,34 +1,20 @@
-// ai.js
-const { Configuration, OpenAIApi } = require('openai');
+const OpenAI = require("openai");
 
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY, // Certifique-se que essa variável está no ambiente do Render
 });
-const openai = new OpenAIApi(configuration);
 
 async function gerarResposta(pergunta) {
   try {
-    const promptBase = `
-Você é o assistente inteligente da BRYNIX, uma empresa de transformação digital com IA. 
-Sua missão é conversar com naturalidade, responder de forma clara e profissional, mantendo o tom humano e inspirador da marca.
-
-Seja acolhedor e mostre como a BRYNIX pode ajudar empresas a se transformarem com IA.
-Evite parecer técnico demais. Foco em impacto nos negócios.
-
-Pergunta do visitante: "${pergunta}"
-`;
-
-    const response = await openai.createChatCompletion({
-      model: 'gpt-4',
-      messages: [{ role: 'user', content: promptBase }],
-      temperature: 0.7,
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: pergunta }],
     });
 
-    const respostaGerada = response.data.choices[0].message.content.trim();
-    return respostaGerada;
-  } catch (err) {
-    console.error('Erro na geração de resposta IA:', err);
-    return 'Desculpe, houve um problema ao gerar a resposta.';
+    return completion.choices[0].message.content;
+  } catch (error) {
+    console.error("Erro ao gerar resposta da IA:", error);
+    return "Desculpe, ocorreu um erro ao tentar responder. Tente novamente mais tarde.";
   }
 }
 
