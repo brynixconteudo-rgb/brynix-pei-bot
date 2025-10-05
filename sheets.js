@@ -8,26 +8,41 @@ const auth = new google.auth.GoogleAuth({
 
 const sheets = google.sheets({ version: "v4", auth });
 
-// Cabeçalhos esperados (só referência, não usado diretamente no código)
-const HEADERS = [
-  "nome",
-  "email",
-  "whatsapp",
-  "empresa",
-  "porte",
-  "desafio",
-  "classificacao",
-  "origem",
-  "tipo_interacao",
-  "utm_source",
-  "utm_medium",
-];
-
-// Função para registrar lead na planilha
-async function registrarLead({ nome, empresa, contato, porte, desafio, classificacao }) {
-  const valores = [
-    [new Date().toLocaleString("pt-BR"), nome, empresa || "", contato, porte || "", desafio, classificacao || "morno"]
-  ];
+// Função para registrar lead completo na planilha
+async function salvarLead({
+  timestamp = new Date().toLocaleString("pt-BR"),
+  origem = "Chat PEI",
+  nome,
+  email = "",
+  whatsapp = "",
+  empresa = "",
+  porte = "",
+  desafio = "",
+  tipo_interacao = "chat",
+  classificacao = "morno",
+  utm_source = "",
+  utm_medium = "",
+  utm_campaign = "",
+  request_id = "",
+  ip_hash = ""
+}) {
+  const valores = [[
+    timestamp,
+    origem,
+    nome,
+    email,
+    whatsapp,
+    empresa,
+    porte,
+    desafio,
+    tipo_interacao,
+    classificacao,
+    utm_source,
+    utm_medium,
+    utm_campaign,
+    request_id,
+    ip_hash
+  ]];
 
   try {
     await sheets.spreadsheets.values.append({
@@ -45,4 +60,4 @@ async function registrarLead({ nome, empresa, contato, porte, desafio, classific
   }
 }
 
-module.exports = { registrarLead };
+module.exports = { salvarLead };
