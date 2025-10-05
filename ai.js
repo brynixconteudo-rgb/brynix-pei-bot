@@ -145,4 +145,5 @@ Obrigado por compartilhar tudo com a gente. Foi ótimo conversar com você! 👋
   }
 }
 
-module.exports = gerarResposta;
+// ✅ Exportação nomeada
+module.exports = { gerarResposta };
