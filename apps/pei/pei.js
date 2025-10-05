@@ -5,8 +5,12 @@ const { salvarLead } = require("../../sheets");
 
 const sessions = {}; // Armazena dados por sessionId
 
-router.post("/pei", async (req, res) => {
+router.post("/pei/ia", async (req, res) => {
   const { mensagem, sessionId } = req.body;
+
+  if (!mensagem || !sessionId) {
+    return res.status(400).json({ erro: "Mensagem ou sessionId ausentes." });
+  }
 
   // Inicia sessão se necessário
   if (!sessions[sessionId]) {
@@ -32,43 +36,50 @@ router.post("/pei", async (req, res) => {
     classificacao: sessao.classificacao
   };
 
-  // Envia a mensagem com histórico + dados coletados
-  const { resposta, coleta } = await gerarResposta(mensagem, {
-    historico: sessao.historico,
-    coleta: coletaExistente
-  });
-
-  // Atualiza campos coletados, mas só se ainda não existirem
-  Object.entries(coleta || {}).forEach(([campo, valor]) => {
-    if (valor && !sessao[campo]) {
-      sessao[campo] = valor;
-    }
-  });
-
-  sessao.historico.push({ de: "bot", texto: resposta });
-
-  // Verifica se todos os dados foram coletados
-  const completo =
-    sessao.nome &&
-    sessao.empresa &&
-    sessao.contato &&
-    sessao.desafio &&
-    sessao.classificacao;
-
-  if (completo) {
-    await salvarLead({
-      nome: sessao.nome,
-      empresa: sessao.empresa,
-      contato: sessao.contato,
-      desafio: sessao.desafio,
-      classificacao: sessao.classificacao,
-      origem: "Chat PEI",
-      dataHora: new Date().toISOString()
+  try {
+    const { resposta, coleta } = await gerarResposta(mensagem, {
+      historico: sessao.historico,
+      coletado: coletaExistente
     });
-    delete sessions[sessionId]; // Limpa após salvar
-  }
 
-  res.json({ resposta });
+    // Atualiza campos coletados
+    Object.entries(coleta || {}).forEach(([campo, valor]) => {
+      if (valor && !sessao[campo]) {
+        sessao[campo] = valor;
+      }
+    });
+
+    sessao.historico.push({ de: "bot", texto: resposta });
+
+    // Verifica se está completo para salvar
+    const completo =
+      sessao.nome &&
+      sessao.empresa &&
+      sessao.contato &&
+      sessao.desafio &&
+      sessao.classificacao;
+
+    if (completo) {
+      await salvarLead({
+        nome: sessao.nome,
+        empresa: sessao.empresa,
+        contato: sessao.contato,
+        desafio: sessao.desafio,
+        classificacao: sessao.classificacao,
+        origem: "Chat PEI",
+        dataHora: new Date().toISOString()
+      });
+
+      console.log(`[✅] Lead salvo com sucesso (sessionId: ${sessionId})`);
+
+      delete sessions[sessionId];
+    }
+
+    res.json({ resposta });
+  } catch (err) {
+    console.error("Erro ao gerar resposta da IA:", err);
+    res.status(500).json({ erro: "Erro interno da IA" });
+  }
 });
 
 module.exports = router;
