@@ -27,7 +27,8 @@ router.post("/pei/ia", async (req, res) => {
   const sessao = sessions[sessionId];
 
   try {
-    const { resposta, coleta } = await gerarResposta(mensagem, {
+    // Prepara contexto para IA
+    const contexto = {
       historico: sessao.historico,
       coletado: {
         nome: sessao.nome,
@@ -36,25 +37,26 @@ router.post("/pei/ia", async (req, res) => {
         desafio: sessao.desafio,
         classificacao: sessao.classificacao
       }
-    });
+    };
 
-    // Atualiza campos coletados na sessão
-    Object.entries(coleta || {}).forEach(([campo, valor]) => {
-      if (valor && !sessao[campo]) {
-        sessao[campo] = valor;
+    const { resposta, coleta } = await gerarResposta(mensagem, contexto);
+
+    // Atualiza os dados coletados na sessão, mas não sobrescreve se já existir
+    if (coleta && typeof coleta === "object") {
+      for (const [campo, valor] of Object.entries(coleta)) {
+        if (valor && (!sessao[campo] || sessao[campo].trim() === "")) {
+          sessao[campo] = valor.trim();
+        }
       }
-    });
+    }
 
+    // Atualiza histórico da conversa
     sessao.historico.push({ de: "usuario", texto: mensagem });
     sessao.historico.push({ de: "bot", texto: resposta });
 
-    // Verifica se todos os campos obrigatórios foram preenchidos
-    const completo =
-      sessao.nome &&
-      sessao.empresa &&
-      sessao.contato &&
-      sessao.desafio &&
-      sessao.classificacao;
+    // Verifica se todos os dados foram coletados
+    const camposObrigatorios = ["nome", "empresa", "contato", "desafio", "classificacao"];
+    const completo = camposObrigatorios.every(c => sessao[c]);
 
     if (completo) {
       await salvarLead({
@@ -67,9 +69,26 @@ router.post("/pei/ia", async (req, res) => {
         dataHora: new Date().toISOString()
       });
 
-      console.log(`[✅] Lead salvo com sucesso (sessionId: ${sessionId})`);
+      console.log(`✅ Lead salvo com sucesso na planilha:`, {
+        nome: sessao.nome,
+        empresa: sessao.empresa,
+        contato: sessao.contato,
+        desafio: sessao.desafio,
+        classificacao: sessao.classificacao
+      });
 
-      delete sessions[sessionId]; // limpa a sessão para não duplicar
+      // Limpa a sessão após salvar
+      delete sessions[sessionId];
+    } else {
+      console.log(`⚠️ Lead incompleto, ainda não salvo (sessionId: ${sessionId})`, {
+        coletado: {
+          nome: sessao.nome,
+          empresa: sessao.empresa,
+          contato: sessao.contato,
+          desafio: sessao.desafio,
+          classificacao: sessao.classificacao
+        }
+      });
     }
 
     res.json({ resposta });
