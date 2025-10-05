@@ -1,8 +1,8 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const { gerarResposta } = require("./src/ai");
-const { registrarLead } = require("./src/sheets");
+const { gerarResposta } = require("./ai");
+const { registrarLead } = require("./sheets");
 
 const app = express();
 const port = process.env.PORT || 3001;
