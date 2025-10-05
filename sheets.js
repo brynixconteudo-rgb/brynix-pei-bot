@@ -1,20 +1,14 @@
 const { google } = require("googleapis");
-const { JWT } = require("google-auth-library");
 
-const sheets = google.sheets("v4");
-
-// Autenticação via Service Account
-const auth = new JWT({
-  email: process.env.GOOGLE_CLIENT_EMAIL,
-  key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+// Autenticação via GoogleAuth (Service Account JSON)
+const auth = new google.auth.GoogleAuth({
+  credentials: JSON.parse(process.env.GOOGLE_SA_JSON),
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
 });
 
-// ID da planilha e nome da aba
-const SPREADSHEET_ID = process.env.SHEETS_SPREADSHEET_ID;
-const SHEET_NAME = "Leads";
+const sheets = google.sheets({ version: "v4", auth });
 
-// Cabeçalhos esperados na planilha
+// Cabeçalhos esperados (só referência, não usado diretamente no código)
 const HEADERS = [
   "nome",
   "email",
@@ -26,15 +20,10 @@ const HEADERS = [
   "origem",
   "tipo_interacao",
   "utm_source",
-  "utm_medium",const { google } = require("googleapis");
+  "utm_medium",
+];
 
-const auth = new google.auth.GoogleAuth({
-  credentials: JSON.parse(process.env.GOOGLE_SA_JSON),
-  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-});
-
-const sheets = google.sheets({ version: "v4", auth });
-
+// Função para registrar lead na planilha
 async function registrarLead({ nome, empresa, contato, porte, desafio, classificacao }) {
   const valores = [
     [new Date().toLocaleString("pt-BR"), nome, empresa || "", contato, porte || "", desafio, classificacao || "morno"]
