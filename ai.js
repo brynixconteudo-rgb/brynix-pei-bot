@@ -4,48 +4,57 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-async function gerarResposta(mensagem, sessao = {}) {
-  // Protege contra historico undefined ou inválido
-  const historicoFormatado = Array.isArray(sessao.historico)
-    ? sessao.historico.map(m => ({
-        role: m.de === "usuario" ? "user" : "assistant",
-        content: m.texto
-      }))
-    : [];
+async function gerarResposta(mensagem, sessao) {
+  // Recupera histórico e coleta persistida
+  const historicoFormatado = sessao.historico?.map(m => ({
+    role: m.de === "usuario" ? "user" : "assistant",
+    content: m.texto
+  })) || [];
 
+  const coletaAnterior = sessao.coleta || {};
+  const nome = coletaAnterior.nome;
+  const saudacao = nome ? `Olá, ${nome}!` : `Olá!`;
+
+  // Adiciona uma saudação inicial se for a primeira interação
+  if (historicoFormatado.length === 0) {
+    historicoFormatado.unshift({
+      role: "assistant",
+      content: "Olá! Eu sou a ALICE, Analista de Automação da BRYNIX. Como posso ajudar você com IA nos negócios?"
+    });
+  }
+
+  // Constrói o prompt com contexto
   const prompt = [
     {
       role: "system",
       content: `
 Você é a ALICE — Analista de Negócios e Automação da BRYNIX.
-Converse com o visitante como um consultor de IA experiente e acessível.
 
-**Objetivo:**
-- Ajudar o visitante com dúvidas sobre IA nos negócios.
-- Coletar dados do LEAD de forma leve e espontânea:
-  - Nome
-  - Empresa
-  - Contato
-  - Desafio
-  - Classificação (quente, morno ou frio)
+Fale com empatia, como um consultor experiente em IA, sempre com foco em negócios reais.
 
-**Como classificar:**
-Analise se o lead tem:
-- Orçamento ou interesse em investir (Budget)
-- Poder de decisão ou influência (Authority)
-- Dor clara ou oportunidade relevante (Need)
-- Urgência ou intenção real (Timing)
+🚨 ATENÇÃO: Você está dando continuidade a uma conversa, e o visitante já informou os seguintes dados (caso existam):
 
-Com base nisso, classifique como:
-- **Quente**: Dor clara, interesse real, urgência ou orçamento definido.
-- **Morno**: Interesse inicial, sem urgência ou sem clareza sobre verba.
-- **Frio**: Curioso, apenas explorando, sem intenção visível.
+${JSON.stringify(coletaAnterior, null, 2)}
 
-**IMPORTANTE:**
-- Conduza a conversa como um humano empático, sem parecer um formulário.
-- Se já tiver coletado um dado, **não pergunte novamente**.
-- Responda em formato JSON:
+NUNCA repita perguntas já feitas.
+Sempre use o nome do visitante se ele já foi coletado.
+Mantenha uma conversa fluida, progressiva e natural.
 
+🎯 Objetivos:
+1. Ajudar com dúvidas sobre uso de IA nos negócios.
+2. Coletar as seguintes informações (se ainda faltarem):
+  - nome
+  - empresa
+  - contato
+  - desafio
+  - classificacao (quente, morno, frio)
+
+🔥 Classificação:
+- **quente**: dor clara + interesse real ou urgência/orçamento
+- **morno**: tem interesse, mas ainda sem timing ou verba clara
+- **frio**: curioso, explorando, sem intenção aparente
+
+🧠 Exemplo de resposta esperada:
 {
   "resposta": "<mensagem ao usuário>",
   "coleta": {
@@ -72,19 +81,15 @@ Com base nisso, classifique como:
 
     const jsonBruto = completion.choices[0].message.content;
 
-    // Tenta parsear JSON da IA
     const json = JSON.parse(jsonBruto);
 
     return {
-      resposta: json.resposta || "Desculpe, não entendi. Pode repetir?",
+      resposta: json.resposta,
       coleta: json.coleta || {}
     };
   } catch (e) {
     console.error("Erro ao interpretar resposta da IA:", e);
-    return {
-      resposta: "Desculpe, tive um erro ao processar sua pergunta. Pode repetir de outro jeito?",
-      coleta: {}
-    };
+    return { resposta: "Desculpe, algo deu errado aqui. Pode repetir?", coleta: {} };
   }
 }
 
