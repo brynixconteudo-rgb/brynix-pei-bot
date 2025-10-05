@@ -1,21 +1,66 @@
-const OpenAI = require("openai");
+const { ChatOpenAI } = require("langchain/chat_models/openai");
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Certifique-se que essa variável está no ambiente do Render
+const chat = new ChatOpenAI({
+  openAIApiKey: process.env.OPENAI_API_KEY,
+  temperature: 0.6,
+  modelName: "gpt-4"
 });
 
-async function gerarResposta(pergunta) {
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: pergunta }],
-    });
+async function gerarResposta(mensagem, sessao) {
+  const historicoFormatado = sessao.historico?.map(m => ({
+    role: m.de === "usuario" ? "user" : "assistant",
+    content: m.texto
+  })) || [];
 
-    return completion.choices[0].message.content;
-  } catch (error) {
-    console.error("Erro ao gerar resposta da IA:", error);
-    return "Desculpe, ocorreu um erro ao tentar responder. Tente novamente mais tarde.";
+  const prompt = [
+    {
+      role: "system",
+      content: `
+Você é o PEI — Porta de Entrada Inteligente da BRYNIX.
+Seu papel é conversar com o visitante do site de forma acolhedora, humana e fluida, como um consultor de IA.
+Seu objetivo é ajudar e, ao longo da conversa, coletar os seguintes dados:
+- Nome
+- Empresa
+- Contato (e-mail ou telefone)
+- Desafio
+- Classificação (quente, morno ou frio)
+
+IMPORTANTE:
+- Se ainda não tiver um dado, conduza naturalmente a conversa para obtê-lo.
+- Se o visitante já deu o dado, **não pergunte novamente**.
+- Use linguagem natural, sem parecer um formulário.
+- Nunca diga "vou salvar", apenas aja com naturalidade.
+
+Quando responder, retorne em formato JSON:
+{
+  "resposta": "<mensagem que você quer dizer>",
+  "coleta": {
+    "nome": "...",
+    "empresa": "...",
+    "contato": "...",
+    "desafio": "...",
+    "classificacao": "quente|morno|frio"
+  }
+}
+      `.trim()
+    },
+    ...historicoFormatado,
+    { role: "user", content: mensagem }
+  ];
+
+  const completion = await chat.call(prompt);
+  const jsonBruto = completion?.content;
+
+  try {
+    const json = JSON.parse(jsonBruto);
+    return {
+      resposta: json.resposta,
+      coleta: json.coleta || {}
+    };
+  } catch (e) {
+    console.error("Erro ao interpretar resposta da IA:", jsonBruto);
+    return { resposta: "Desculpe, não entendi. Pode repetir?", coleta: {} };
   }
 }
 
-module.exports = { gerarResposta };
+module.exports = gerarResposta;
