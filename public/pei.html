@@ -93,42 +93,56 @@
   </div>
 
   <script>
-    // Gera ou recupera o sessionId
-    const sessionId = localStorage.getItem('sessionId') || crypto.randomUUID();
-    localStorage.setItem('sessionId', sessionId);
+    const sessionId = localStorage.getItem("sessionId") || crypto.randomUUID();
+    localStorage.setItem("sessionId", sessionId);
+
+    let sessao = {
+      historico: [],
+      coletado: {}
+    };
 
     async function enviarPergunta() {
-      const perguntaInput = document.getElementById('pergunta');
+      const perguntaInput = document.getElementById("pergunta");
       const pergunta = perguntaInput.value.trim();
       if (!pergunta) return;
 
-      adicionarMensagem(pergunta, 'user');
-      perguntaInput.value = '';
+      adicionarMensagem(pergunta, "user");
+      perguntaInput.value = "";
+
+      sessao.historico.push({ de: "usuario", texto: pergunta });
 
       try {
-        const resposta = await fetch('/pei/ia', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const resposta = await fetch("/pei/ia", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            mensagem: pergunta,
-            sessionId: sessionId
+            pergunta,
+            sessao
           })
-        }).then(res => res.json());
+        }).then((res) => res.json());
 
         if (resposta.resposta) {
-          adicionarMensagem(resposta.resposta, 'ia');
+          adicionarMensagem(resposta.resposta, "ia");
+          sessao.historico.push({ de: "bot", texto: resposta.resposta });
+
+          if (resposta.coleta) {
+            sessao.coletado = {
+              ...sessao.coletado,
+              ...resposta.coleta
+            };
+          }
         } else {
-          adicionarMensagem('Desculpe, não consegui entender.', 'ia');
+          adicionarMensagem("Desculpe, não consegui entender.", "ia");
         }
       } catch (erro) {
-        adicionarMensagem('Erro ao se comunicar com o servidor.', 'ia');
+        adicionarMensagem("Erro ao se comunicar com o servidor.", "ia");
       }
     }
 
     function adicionarMensagem(texto, tipo) {
-      const messagesDiv = document.getElementById('messages');
-      const msg = document.createElement('div');
-      msg.className = tipo === 'user' ? 'user-msg' : 'ia-msg';
+      const messagesDiv = document.getElementById("messages");
+      const msg = document.createElement("div");
+      msg.className = tipo === "user" ? "user-msg" : "ia-msg";
       msg.innerText = texto;
       messagesDiv.appendChild(msg);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
