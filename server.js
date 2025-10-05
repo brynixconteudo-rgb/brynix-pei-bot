@@ -1,56 +1,82 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const cors = require("cors");
-const path = require("path");
-
-const { registrarLead } = require("./sheets");
-const { gerarResposta } = require("./ai");
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const { google } = require('googleapis');
+const gerarResposta = require('./ai');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Middlewares
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "public")));
 
-// Endpoint de teste
-app.get("/", (req, res) => {
-  res.send("BOT PEI VIVO 🚀");
+// Rota raiz
+app.get('/', (req, res) => {
+  res.send('BRYNIX PEI BOT online ✨');
 });
 
-// Endpoint de registro de leads
-app.post("/pei/test", async (req, res) => {
-  const { nome, empresa, contato, porte, desafio, classificacao } = req.body;
+// Rota de teste de lead (ex: POST via formulário)
+app.post('/pei/test', async (req, res) => {
+  const { nome, contato, empresa, porte, desafio, classificacao, tipoInteracao, origem } = req.body;
 
-  if (!nome || !contato || !desafio) {
-    return res.status(400).json({ erro: "Dados obrigatórios ausentes." });
+  if (!nome || !contato) {
+    return res.status(400).json({ erro: 'Campos obrigatórios ausentes: nome ou contato' });
   }
 
-  const sucesso = await registrarLead({ nome, empresa, contato, porte, desafio, classificacao });
+  try {
+    const auth = new google.auth.GoogleAuth({
+      credentials: JSON.parse(process.env.GOOGLE_SA_JSON),
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
 
-  if (sucesso) {
-    res.status(200).json({ status: "Lead registrado com sucesso." });
-  } else {
-    res.status(500).json({ erro: "Erro ao registrar lead." });
+    const sheets = google.sheets({ version: 'v4', auth });
+    const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
+
+    const values = [[
+      new Date().toLocaleString('pt-BR'),
+      nome,
+      contato,
+      empresa || '',
+      porte || '',
+      desafio || '',
+      classificacao || '',
+      tipoInteracao || '',
+      origem || '',
+    ]];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Leads!A2',
+      valueInputOption: 'USER_ENTERED',
+      resource: { values },
+    });
+
+    res.status(200).json({ mensagem: 'Lead registrado com sucesso!' });
+  } catch (erro) {
+    console.error('Erro ao registrar lead:', erro);
+    res.status(500).json({ erro: 'Erro ao salvar lead' });
   }
 });
 
-// Endpoint de conversa com IA
-app.post("/pei/ia", async (req, res) => {
-  const { prompt } = req.body;
+// Rota de conversa com IA
+app.post('/pei/ia', async (req, res) => {
+  const { mensagem } = req.body;
 
-  if (!prompt) {
-    return res.status(400).json({ erro: "Prompt ausente." });
+  if (!mensagem) {
+    return res.status(400).json({ erro: 'Mensagem não fornecida' });
   }
 
-  const resposta = await gerarResposta(prompt);
-  res.json({ resposta });
+  try {
+    const resposta = await gerarResposta(mensagem);
+    res.status(200).json({ resposta });
+  } catch (erro) {
+    console.error('Erro IA:', erro);
+    res.status(500).json({ erro: 'Erro ao gerar resposta da IA' });
+  }
 });
 
+// Inicia o servidor
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
-});
-
-app.listen(port, () => {
-  console.log(`Servidor rodando na porta ${port}`);
 });
