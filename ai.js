@@ -1,95 +1,90 @@
-const OpenAI = require("openai");
+const { Configuration, OpenAIApi } = require("openai");
 
-const openai = new OpenAI({
+const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
+const openai = new OpenAIApi(configuration);
 
-async function gerarResposta(mensagem, sessao) {
-  // Recupera histórico e coleta persistida
-  const historicoFormatado = sessao.historico?.map(m => ({
-    role: m.de === "usuario" ? "user" : "assistant",
-    content: m.texto
-  })) || [];
+// Define prompt base de boas-vindas e coleta
+function construirPrompt(historico, sessao) {
+  const intro = `
+Você é Alice, uma assistente inteligente e simpática da BRYNIX.
+Sua função é recepcionar de forma fluida os visitantes do site, conversar naturalmente e registrar as informações que surgirem durante o papo.
 
-  const coletaAnterior = sessao.coleta || {};
-  const nome = coletaAnterior.nome;
-  const saudacao = nome ? `Olá, ${nome}!` : `Olá!`;
+Sempre que possível, extraia os seguintes dados de forma natural:
+- nome da pessoa
+- nome da empresa
+- forma de contato (whatsapp ou e-mail)
+- principal desafio ou dúvida
+- porte da empresa (micro, pequena, média, grande)
+- classificação do interesse (quente, morno, frio)
 
-  // Adiciona uma saudação inicial se for a primeira interação
-  if (historicoFormatado.length === 0) {
-    historicoFormatado.unshift({
-      role: "assistant",
-      content: "Olá! Eu sou a ALICE, Analista de Automação da BRYNIX. Como posso ajudar você com IA nos negócios?"
-    });
-  }
+Nunca pergunte tudo de uma vez. Vá perguntando naturalmente, como em uma conversa real.
 
-  // Constrói o prompt com contexto
-  const prompt = [
-    {
-      role: "system",
-      content: `
-Você é a ALICE — Analista de Negócios e Automação da BRYNIX.
+Caso a pessoa já tenha falado o nome ou desafio, não peça novamente. Lembre-se da conversa anterior.
+Identifique-se como Alice da BRYNIX apenas na primeira fala. Evite repetir isso a cada mensagem.
 
-Fale com empatia, como um consultor experiente em IA, sempre com foco em negócios reais.
+Seja simpática, prestativa, e encante o visitante sem parecer robótica.
+`;
 
-🚨 ATENÇÃO: Você está dando continuidade a uma conversa, e o visitante já informou os seguintes dados (caso existam):
+  const historicoTexto = historico
+    .map(msg => `${msg.de === "usuario" ? "Usuário" : "Alice"}: ${msg.texto}`)
+    .join("\n");
 
-${JSON.stringify(coletaAnterior, null, 2)}
-
-NUNCA repita perguntas já feitas.
-Sempre use o nome do visitante se ele já foi coletado.
-Mantenha uma conversa fluida, progressiva e natural.
-
-🎯 Objetivos:
-1. Ajudar com dúvidas sobre uso de IA nos negócios.
-2. Coletar as seguintes informações (se ainda faltarem):
-  - nome
-  - empresa
-  - contato
-  - desafio
-  - classificacao (quente, morno, frio)
-
-🔥 Classificação:
-- **quente**: dor clara + interesse real ou urgência/orçamento
-- **morno**: tem interesse, mas ainda sem timing ou verba clara
-- **frio**: curioso, explorando, sem intenção aparente
-
-🧠 Exemplo de resposta esperada:
-{
-  "resposta": "<mensagem ao usuário>",
-  "coleta": {
-    "nome": "...",
-    "empresa": "...",
-    "contato": "...",
-    "desafio": "...",
-    "classificacao": "quente|morno|frio"
-  }
+  return `${intro}\n\n${historicoTexto}\n\nAlice:`;
 }
-`.trim()
-    },
-    ...historicoFormatado,
-    { role: "user", content: mensagem }
-  ];
 
+// Analisa a resposta da IA e tenta extrair dados úteis
+function extrairDados(resposta) {
+  const coleta = {};
+
+  const regexes = {
+    nome: /meu nome (é|chama-se|é o|sou o|sou a)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s[A-ZÀ-Ú][a-zà-ú]+)*)/i,
+    empresa: /empresa (se chama|é|chama-se|seu nome é)?\s*[:\-]?\s*([A-Z0-9&.\- ]{3,})/i,
+    contato: /(\(?\d{2}\)?\s?\d{4,5}[-\s]?\d{4})|([a-z0-9_.+-]+@[a-z0-9-]+\.[a-z.]+)/i,
+    porte: /\b(micro|pequena|média|grande)\b/i,
+    desafio: /(desafio|problema|dificuldade|questão)[^.!?]{5,}/i,
+    classificacao: /\b(quente|morno|frio)\b/i
+  };
+
+  for (const campo in regexes) {
+    const match = resposta.match(regexes[campo]);
+    if (match) {
+      coleta[campo] = match[2] || match[1];
+    }
+  }
+
+  return coleta;
+}
+
+// Função principal exportada
+async function gerarResposta(mensagem, sessao = {}) {
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: prompt,
-      temperature: 0.6,
-      max_tokens: 1000,
+    // Proteção para o histórico
+    sessao.historico = sessao.historico || [];
+    sessao.historico.push({ de: "usuario", texto: mensagem });
+
+    const prompt = construirPrompt(sessao.historico, sessao);
+
+    const completion = await openai.createCompletion({
+      model: "text-davinci-003",
+      prompt,
+      max_tokens: 300,
+      temperature: 0.7,
     });
 
-    const jsonBruto = completion.choices[0].message.content;
+    const resposta = completion.data.choices[0].text.trim();
 
-    const json = JSON.parse(jsonBruto);
+    // Salva resposta no histórico
+    sessao.historico.push({ de: "bot", texto: resposta });
 
-    return {
-      resposta: json.resposta,
-      coleta: json.coleta || {}
-    };
-  } catch (e) {
-    console.error("Erro ao interpretar resposta da IA:", e);
-    return { resposta: "Desculpe, algo deu errado aqui. Pode repetir?", coleta: {} };
+    // Tenta coletar dados
+    const coleta = extrairDados(`${mensagem}\n${resposta}`);
+
+    return { resposta, coleta };
+  } catch (erro) {
+    console.error("Erro em gerarResposta:", erro.message);
+    return { resposta: "Desculpe, houve um erro ao gerar a resposta. Pode tentar novamente?", coleta: {} };
   }
 }
 
