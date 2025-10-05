@@ -67,7 +67,7 @@
 
 <div id="chat-container">
   <div id="chat"></div>
-  
+
   <div id="form">
     <input type="text" id="mensagem" placeholder="Digite sua mensagem..." autofocus />
     <button id="enviar">Enviar</button>
@@ -85,6 +85,13 @@
   const enviarBtn = document.getElementById('enviar');
   let sessao = {};
 
+  // Geração e persistência do sessionId no navegador
+  let sessionId = localStorage.getItem("pei_session_id");
+  if (!sessionId) {
+    sessionId = "sess_" + Date.now() + "_" + Math.random().toString(36).substring(2, 8);
+    localStorage.setItem("pei_session_id", sessionId);
+  }
+
   function adicionarMensagem(mensagem, autor = 'usuario') {
     const p = document.createElement('p');
     p.innerHTML = autor === 'usuario' ? `<strong>Você:</strong> ${mensagem}` : `<strong>BRYNIX:</strong> ${mensagem}`;
@@ -101,12 +108,15 @@
     fetch('/pei/ia', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mensagem, sessao })
+      body: JSON.stringify({ mensagem, sessao, sessionId })
     })
     .then(res => res.json())
     .then(data => {
       adicionarMensagem(data.resposta || '[resposta vazia]', 'ia');
-      if (data.sessao) sessao = data.sessao;
+      if (data.sessao) {
+        sessao = data.sessao;
+        sessao.sessionId = sessionId; // mantém sessionId no objeto para envio futuro
+      }
     })
     .catch(err => {
       adicionarMensagem('[Erro ao comunicar com a IA]', 'ia');
@@ -114,7 +124,6 @@
     });
   }
 
-  // Enter envia mensagem
   mensagemInput.addEventListener('keypress', function (e) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -140,6 +149,7 @@
       desafio: sessao?.coletado?.desafio || '',
       tipo_interacao: 'chat_finalizado',
       classificacao: sessao?.coletado?.classificacao || 'morno',
+      sessionId: sessao?.sessionId || sessionId,
       utm_source: '',
       utm_medium: '',
       utm_campaign: '',
@@ -177,6 +187,7 @@
           classificacao: sessao?.coletado?.classificacao || 'morno',
           tipo_interacao: 'email',
           origem: 'Chat PEI',
+          sessionId: sessao?.sessionId || sessionId,
           timestamp: new Date().toLocaleString("pt-BR"),
         })
       }).then(() => {
