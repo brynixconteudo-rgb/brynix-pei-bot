@@ -3,7 +3,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Prompt Base (PEI V1)
+// Prompt Base (PEI V1.1)
 function construirPrompt(historico, sessao) {
   const intro = `
 Você é o PEI (Porta de Entrada Inteligente), um assistente de recepção da BRYNIX.
@@ -24,24 +24,18 @@ Você é o PEI (Porta de Entrada Inteligente), um assistente de recepção da BR
 - Sempre considere tudo que foi dito antes.
 - Seja natural, traga variações nas frases e conduza como quem está ouvindo de verdade.
 
+📞 Quando já tiver todos os dados, encerre a conversa com um tom profissional e simpático:
+- Confirme que a equipe da BRYNIX vai entrar em contato.
+- Agradeça e reforce o compromisso de impacto real nos negócios com IA.
+- Encerre com leveza, sem soar robótico.
+
 ✨ Estilo de fala:
 - Profissional, sem ser fria
 - Acolhedora, sem parecer robótica
 - Curiosa, sem ser invasiva
 - Fluida, como um humano real
 
-Exemplos de abordagem:
-
-Usuário: Olá, sou a Bruna.
-PEI: Oi, Bruna! 😊 Que bom ter você por aqui. Me conta: com o que você trabalha?
-
-Usuário: Tenho um restaurante.
-PEI: Que delícia! 🍽️ E como se chama seu restaurante?
-
-Usuário: Chama Estação Sabor.
-PEI: Nome ótimo! Já me deu fome só de ouvir 😄 Me conta uma coisa: o que mais tem tirado seu sono por aí? Talvez eu possa ajudar.
-
-→ Continue nesse estilo. Não interrompa bruscamente. Use o que o usuário fala para aprofundar.
+→ Use tudo isso como base para construir sua resposta. Nunca seja repetitivo.
 `;
 
   const historicoTexto = historico
@@ -60,7 +54,7 @@ function extrairDados(resposta) {
     empresa: /(?:minha empresa|empresa (?:chama-se|se chama|é|nome é))[:\-]?\s*([A-Z0-9&.\- ]{3,})/i,
     contato: /(\(?\d{2}\)?\s?\d{4,5}[-\s]?\d{4})|([a-z0-9_.+-]+@[a-z0-9-]+\.[a-z.]+)/i,
     porte: /\b(micro|pequena|média|grande)\b/i,
-    desafio: /(desafio|problema|dificuldade|questão)[^.!?]{5,}/i,
+    desafio: /(desafio|problema|dificuldade|questão|objetivo)[^.!?]{5,}/i,
     classificacao: /\b(quente|morno|frio)\b/i
   };
 
@@ -77,7 +71,6 @@ function extrairDados(resposta) {
 // Função principal da IA
 async function gerarResposta(mensagem, sessao = {}) {
   try {
-    // Garante estrutura da sessão
     if (typeof sessao !== 'object' || sessao === null) sessao = {};
     if (!Array.isArray(sessao.historico)) sessao.historico = [];
     if (typeof sessao.coletado !== 'object' || sessao.coletado === null) sessao.coletado = {};
@@ -89,7 +82,7 @@ async function gerarResposta(mensagem, sessao = {}) {
     const prompt = construirPrompt(sessao.historico, sessao);
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o", // ou "gpt-3.5-turbo"
+      model: "gpt-4o",
       messages: [
         { role: "system", content: prompt },
         { role: "user", content: mensagem }
@@ -106,7 +99,6 @@ async function gerarResposta(mensagem, sessao = {}) {
     // Extrai dados da interação
     const dadosExtraidos = extrairDados(`${mensagem}\n${resposta}`);
 
-    // Atualiza sessão com novos dados, sem sobrescrever os anteriores
     for (const chave in dadosExtraidos) {
       if (!sessao.coletado[chave]) {
         sessao.coletado[chave] = dadosExtraidos[chave];
@@ -115,7 +107,32 @@ async function gerarResposta(mensagem, sessao = {}) {
 
     console.log("💡 Dados coletados até agora:", sessao.coletado);
 
-    return { resposta, coleta: sessao.coletado };
+    // Verifica se tudo está preenchido
+    const completo =
+      sessao.coletado.nome &&
+      sessao.coletado.empresa &&
+      sessao.coletado.contato &&
+      sessao.coletado.desafio &&
+      sessao.coletado.classificacao;
+
+    // Se completo, sobrescreve resposta com CTA final (opcional)
+    if (completo) {
+      const fechamento = `Perfeito! 😊 Com todas essas informações, já posso passar seu contato para nosso time.
+
+A equipe da BRYNIX vai falar com você em breve para entender melhor o seu cenário e te mostrar como nossas soluções de IA podem gerar valor real para o seu negócio.
+
+Obrigado por compartilhar tudo com a gente. Foi ótimo conversar com você! 👋`;
+      return {
+        resposta: fechamento,
+        coleta: sessao.coletado
+      };
+    }
+
+    return {
+      resposta,
+      coleta: sessao.coletado
+    };
+
   } catch (erro) {
     console.error("❌ Erro em gerarResposta:", erro.message);
     return {
