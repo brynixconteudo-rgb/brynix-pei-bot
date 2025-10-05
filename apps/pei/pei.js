@@ -23,10 +23,22 @@ router.post("/pei", async (req, res) => {
   const sessao = sessions[sessionId];
   sessao.historico.push({ de: "usuario", texto: mensagem });
 
-  // Envia a mensagem para a IA com histórico e dados atuais
-  const { resposta, coleta } = await gerarResposta(mensagem, sessao);
+  // Prepara coleta já existente para passar à IA
+  const coletaExistente = {
+    nome: sessao.nome,
+    empresa: sessao.empresa,
+    contato: sessao.contato,
+    desafio: sessao.desafio,
+    classificacao: sessao.classificacao
+  };
 
-  // Atualiza dados coletados, se houver
+  // Envia a mensagem com histórico + dados coletados
+  const { resposta, coleta } = await gerarResposta(mensagem, {
+    historico: sessao.historico,
+    coleta: coletaExistente
+  });
+
+  // Atualiza campos coletados, mas só se ainda não existirem
   Object.entries(coleta || {}).forEach(([campo, valor]) => {
     if (valor && !sessao[campo]) {
       sessao[campo] = valor;
@@ -35,8 +47,13 @@ router.post("/pei", async (req, res) => {
 
   sessao.historico.push({ de: "bot", texto: resposta });
 
-  // Verifica se todos os campos foram preenchidos
-  const completo = sessao.nome && sessao.empresa && sessao.contato && sessao.desafio && sessao.classificacao;
+  // Verifica se todos os dados foram coletados
+  const completo =
+    sessao.nome &&
+    sessao.empresa &&
+    sessao.contato &&
+    sessao.desafio &&
+    sessao.classificacao;
 
   if (completo) {
     await salvarLead({
@@ -48,7 +65,7 @@ router.post("/pei", async (req, res) => {
       origem: "Chat PEI",
       dataHora: new Date().toISOString()
     });
-    delete sessions[sessionId]; // Limpa sessão após salvar
+    delete sessions[sessionId]; // Limpa após salvar
   }
 
   res.json({ resposta });
