@@ -1,4 +1,3 @@
-// ai.js
 const OpenAI = require("openai");
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -78,9 +77,10 @@ function extrairDados(resposta) {
 // Função principal da IA
 async function gerarResposta(mensagem, sessao = {}) {
   try {
-    // Inicialização segura do histórico e coleta
-    sessao.historico = sessao.historico || [];
-    sessao.coletado = sessao.coletado || {};
+    // Garante estrutura da sessão
+    if (typeof sessao !== 'object' || sessao === null) sessao = {};
+    if (!Array.isArray(sessao.historico)) sessao.historico = [];
+    if (typeof sessao.coletado !== 'object' || sessao.coletado === null) sessao.coletado = {};
 
     // Atualiza histórico com a nova entrada do usuário
     sessao.historico.push({ de: "usuario", texto: mensagem });
@@ -89,7 +89,7 @@ async function gerarResposta(mensagem, sessao = {}) {
     const prompt = construirPrompt(sessao.historico, sessao);
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o", // pode usar gpt-3.5-turbo se quiser reduzir custos
+      model: "gpt-4o", // ou "gpt-3.5-turbo"
       messages: [
         { role: "system", content: prompt },
         { role: "user", content: mensagem }
@@ -120,7 +120,7 @@ async function gerarResposta(mensagem, sessao = {}) {
     console.error("❌ Erro em gerarResposta:", erro.message);
     return {
       resposta: "Desculpe, houve um erro ao gerar a resposta. Pode tentar novamente?",
-      coleta: sessao.coletado || {},
+      coleta: (sessao && sessao.coletado) ? sessao.coletado : {},
     };
   }
 }
