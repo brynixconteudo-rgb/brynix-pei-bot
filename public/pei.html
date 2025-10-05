@@ -93,43 +93,47 @@
   </div>
 
   <script>
-  // Gera ou recupera sessionId
-  const sessionId = localStorage.getItem('sessionId') || crypto.randomUUID();
-  localStorage.setItem('sessionId', sessionId);
+    // Gera ou recupera o sessionId
+    const sessionId = localStorage.getItem('sessionId') || crypto.randomUUID();
+    localStorage.setItem('sessionId', sessionId);
 
-  async function enviarPergunta() {
-    const perguntaInput = document.getElementById('pergunta');
-    const pergunta = perguntaInput.value.trim();
-    if (!pergunta) return;
+    async function enviarPergunta() {
+      const perguntaInput = document.getElementById('pergunta');
+      const pergunta = perguntaInput.value.trim();
+      if (!pergunta) return;
 
-    adicionarMensagem(pergunta, 'user');
-    perguntaInput.value = '';
+      adicionarMensagem(pergunta, 'user');
+      perguntaInput.value = '';
 
-    const resposta = await fetch('/pei/ia', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mensagem: pergunta,
-        sessionId: sessionId
-      })
-    }).then(res => res.json());
+      try {
+        const resposta = await fetch('/pei/ia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mensagem: pergunta,
+            sessionId: sessionId
+          })
+        }).then(res => res.json());
 
-    if (resposta.resposta) {
-      adicionarMensagem(resposta.resposta, 'ia');
-    } else {
-      adicionarMensagem('Desculpe, não consegui entender.', 'ia');
+        if (resposta.resposta) {
+          adicionarMensagem(resposta.resposta, 'ia');
+        } else {
+          adicionarMensagem('Desculpe, não consegui entender.', 'ia');
+        }
+      } catch (erro) {
+        adicionarMensagem('Erro ao se comunicar com o servidor.', 'ia');
+      }
     }
-  }
 
-  function adicionarMensagem(texto, tipo) {
-    const messagesDiv = document.getElementById('messages');
-    const msg = document.createElement('div');
-    msg.className = tipo === 'user' ? 'user-msg' : 'ia-msg';
-    msg.innerText = texto;
-    messagesDiv.appendChild(msg);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-  }
-</script>
+    function adicionarMensagem(texto, tipo) {
+      const messagesDiv = document.getElementById('messages');
+      const msg = document.createElement('div');
+      msg.className = tipo === 'user' ? 'user-msg' : 'ia-msg';
+      msg.innerText = texto;
+      messagesDiv.appendChild(msg);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+  </script>
 
 </body>
 </html>
