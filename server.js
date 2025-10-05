@@ -1,43 +1,54 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const { gerarResposta } = require('./ai');            // OK
-const { registrarLead } = require('./sheets');        // OK
-const { handlePEI } = require('./apps/pei/pei.js');   // OK
+const path = require("path");
+
+const { registrarLead } = require("./sheets");
+const { gerarResposta } = require("./ai");
+
+const app = express();
+const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static("public")); // Serve pei.html e formulario.html
+app.use(express.static(path.join(__dirname, "public")));
 
-// ----------- ROTA DE TESTE DE ENVIO DE LEAD -----------
+// Endpoint de teste
+app.get("/", (req, res) => {
+  res.send("BOT PEI VIVO 🚀");
+});
+
+// Endpoint de registro de leads
 app.post("/pei/test", async (req, res) => {
   const { nome, empresa, contato, porte, desafio, classificacao } = req.body;
 
   if (!nome || !contato || !desafio) {
-    return res.status(400).send("Campos obrigatórios ausentes.");
+    return res.status(400).json({ erro: "Dados obrigatórios ausentes." });
   }
 
   const sucesso = await registrarLead({ nome, empresa, contato, porte, desafio, classificacao });
 
   if (sucesso) {
-    res.send("Lead registrado com sucesso.");
+    res.status(200).json({ status: "Lead registrado com sucesso." });
   } else {
-    res.status(500).send("Erro ao gravar na planilha.");
+    res.status(500).json({ erro: "Erro ao registrar lead." });
   }
 });
 
-// ----------- ROTA COM INTEGRAÇÃO À IA (CHAT LIVRE) -----------
+// Endpoint de conversa com IA
 app.post("/pei/ia", async (req, res) => {
-  const pergunta = req.body.pergunta;
-  if (!pergunta) return res.status(400).send("Pergunta ausente.");
+  const { prompt } = req.body;
 
-  const resposta = await gerarResposta(pergunta);
-  res.send({ resposta });
+  if (!prompt) {
+    return res.status(400).json({ erro: "Prompt ausente." });
+  }
+
+  const resposta = await gerarResposta(prompt);
+  res.json({ resposta });
 });
 
-// ----------- RAIZ -----------
-app.get("/", (req, res) => {
-  res.send("🚀 BRYNIX PEI BOT ativo.");
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
 
 app.listen(port, () => {
