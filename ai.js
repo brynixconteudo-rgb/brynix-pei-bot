@@ -1,9 +1,7 @@
-const { Configuration, OpenAIApi } = require("openai");
-
-const configuration = new Configuration({
+const OpenAI = require("openai");
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-const openai = new OpenAIApi(configuration);
 
 // Prompt Base (com refinamento Alice V2)
 function construirPrompt(historico, sessao) {
@@ -99,14 +97,15 @@ async function gerarResposta(mensagem, sessao = {}) {
 
     const prompt = construirPrompt(sessao.historico, sessao);
 
-    const completion = await openai.createCompletion({
+    // Versão nova da API OpenAI 6.x
+    const completion = await openai.completions.create({
       model: "text-davinci-003",
       prompt,
       max_tokens: 300,
       temperature: 0.7,
     });
 
-    const resposta = completion.data.choices[0].text.trim();
+    const resposta = completion.choices[0].text.trim();
 
     // Atualiza histórico com resposta da IA
     sessao.historico.push({ de: "bot", texto: resposta });
