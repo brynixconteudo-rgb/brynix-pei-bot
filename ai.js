@@ -1,77 +1,148 @@
-const { Configuration, OpenAIApi } = require("openai");
-
-const configuration = new Configuration({
+const OpenAI = require("openai");
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const openai = new OpenAIApi(configuration);
+// Prompt Base (PEI V1.1)
+function construirPrompt(historico, sessao) {
+  const intro = `
+Você é o PEI (Porta de Entrada Inteligente), um assistente de recepção da BRYNIX.
 
-// PROMPT melhorado para extração dos dados
-const gerarResposta = async (mensagem, contexto) => {
-  const prompt = `
-Você é o assistente da BRYNIX, uma consultoria em IA para negócios. Responda ao usuário de forma empática, natural e profissional, sempre guiando a conversa para entender 5 informações essenciais:
+🧠 Sua missão é recepcionar visitantes do site com leveza, inteligência e simpatia — conduzindo uma conversa fluida, humana e profissional.
 
-1. Nome
-2. Empresa
-3. Contato (telefone ou email)
-4. Desafio (o que deseja resolver com IA)
-5. Classificação do lead: "quente", "morno" ou "frio"
+🎯 Seu objetivo principal é descobrir de forma natural e progressiva (nunca tudo de uma vez):
+- Nome da pessoa
+- Nome da empresa
+- Forma de contato (WhatsApp ou e-mail)
+- O desafio ou objetivo principal da pessoa
+- Porte da empresa (micro, pequena, média, grande)
+- Se está apenas conhecendo ou realmente interessado agora
 
-A cada interação, extraia o máximo de dados possíveis. Retorne sempre no formato JSON abaixo ao final:
+⚠️ Importante:
+- **Nunca reinicie a conversa**.
+- **Nunca repita perguntas já respondidas**.
+- Sempre considere tudo que foi dito antes.
+- Seja natural, traga variações nas frases e conduza como quem está ouvindo de verdade.
 
-{
-  "resposta": "<sua resposta natural e empática>",
-  "coleta": {
-    "nome": "...",
-    "empresa": "...",
-    "contato": "...",
-    "desafio": "...",
-    "classificacao": "quente" | "morno" | "frio"
-  }
-}
+📞 Quando já tiver todos os dados, encerre a conversa com um tom profissional e simpático:
+- Confirme que a equipe da BRYNIX vai entrar em contato.
+- Agradeça e reforce o compromisso de impacto real nos negócios com IA.
+- Encerre com leveza, sem soar robótico.
 
-Se algum dado ainda não tiver sido fornecido, retorne-o como `null`.
+✨ Estilo de fala:
+- Profissional, sem ser fria
+- Acolhedora, sem parecer robótica
+- Curiosa, sem ser invasiva
+- Fluida, como um humano real
 
-Histórico recente:
-${contexto.historico.map((h) => `${h.de === "usuario" ? "Usuário" : "BRYNIX"}: ${h.texto}`).join("\n")}
-
-Usuário: ${mensagem}
+→ Use tudo isso como base para construir sua resposta. Nunca seja repetitivo.
 `;
 
+  const historicoTexto = historico
+    .map(msg => `${msg.de === "usuario" ? "Usuário" : "PEI"}: ${msg.texto}`)
+    .join("\n");
+
+  return `${intro}\n\n${historicoTexto}\n\nPEI:`;
+}
+
+// 🔧 RegExs aprimoradas para extrair dados de forma flexível
+function extrairDados(resposta) {
+  const coleta = {};
+
+  const regexes = {
+    nome: /(?:meu nome é|me chamo|sou o|sou a|sou)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s[A-ZÀ-Ú][a-zà-ú]+)?)/i,
+    empresa: /(?:minha empresa|empresa (?:chama-se|se chama|é|nome é)|sou (?:da|do|de)\s+(?:loja|empresa)?\s*|trabalho (?:na|no|em)\s+)([A-Z0-9&.\- ]{3,})/i,
+    contato: /(\(?\d{2}\)?\s?\d{4,5}[-\s]?\d{4})|([a-z0-9_.+-]+@[a-z0-9-]+\.[a-z.]+)/i,
+    porte: /\b(micro|pequena|média|grande)\b/i,
+    desafio: /(?:desafio|problema|dificuldade|questão|objetivo|estou buscando|quero|preciso|gostaria de)[^.!?\n]{10,}/i,
+    classificacao: /\b(quente|morno|frio)\b/i
+  };
+
+  for (const campo in regexes) {
+    const match = resposta.match(regexes[campo]);
+    if (match) {
+      coleta[campo] = match[1] || match[0];
+    }
+  }
+
+  return coleta;
+}
+
+// 🤖 Função principal da IA
+async function gerarResposta(mensagem, sessao = {}) {
   try {
-    const completion = await openai.createChatCompletion({
-      model: "gpt-4", // ou "gpt-3.5-turbo" se preferir
-      messages: [{ role: "user", content: prompt }],
+    // Garantir estrutura esperada
+    if (typeof sessao !== 'object' || sessao === null) sessao = {};
+    if (!Array.isArray(sessao.historico)) sessao.historico = [];
+    if (typeof sessao.coletado !== 'object' || sessao.coletado === null) sessao.coletado = {};
+
+    // Atualiza histórico com a nova entrada do usuário
+    sessao.historico.push({ de: "usuario", texto: mensagem });
+
+    // Geração do prompt contextualizado
+    const prompt = construirPrompt(sessao.historico, sessao);
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: prompt },
+        { role: "user", content: mensagem }
+      ],
       temperature: 0.7,
+      max_tokens: 500,
     });
 
-    const respostaGerada = completion.data.choices[0].message.content;
+    const resposta = completion.choices[0].message.content.trim();
 
-    // DEBUG: log para ver o retorno bruto
-    console.log("[🧠] Resposta bruta da IA:", respostaGerada);
+    // Atualiza histórico com a resposta do PEI
+    sessao.historico.push({ de: "bot", texto: resposta });
 
-    // Tenta extrair JSON da resposta
-    const jsonInicio = respostaGerada.indexOf("{");
-    const jsonFim = respostaGerada.lastIndexOf("}");
+    // Extrai dados da interação combinando entrada + resposta
+    const dadosExtraidos = extrairDados(`${mensagem}\n${resposta}`);
 
-    if (jsonInicio === -1 || jsonFim === -1) {
-      throw new Error("JSON inválido na resposta da IA.");
+    // Atualiza sessão com dados novos (sem sobrescrever os já coletados)
+    for (const chave in dadosExtraidos) {
+      if (!sessao.coletado[chave]) {
+        sessao.coletado[chave] = dadosExtraidos[chave];
+      }
     }
 
-    const json = JSON.parse(respostaGerada.slice(jsonInicio, jsonFim + 1));
+    console.log("💡 Dados coletados até agora:", sessao.coletado);
+
+    // Verifica se tudo está preenchido
+    const completo =
+      sessao.coletado.nome &&
+      sessao.coletado.empresa &&
+      sessao.coletado.contato &&
+      sessao.coletado.desafio &&
+      sessao.coletado.classificacao;
+
+    // Se completo, sobrescreve resposta com CTA final (opcional)
+    if (completo) {
+      const fechamento = `Perfeito! 😊 Com todas essas informações, já posso passar seu contato para nosso time.
+
+A equipe da BRYNIX vai falar com você em breve para entender melhor o seu cenário e te mostrar como nossas soluções de IA podem gerar valor real para o seu negócio.
+
+Obrigado por compartilhar tudo com a gente. Foi ótimo conversar com você! 👋`;
+
+      return {
+        resposta: fechamento,
+        coleta: sessao.coletado
+      };
+    }
 
     return {
-      resposta: json.resposta || "Desculpe, não consegui entender totalmente sua mensagem.",
-      coleta: json.coleta || {}
+      resposta,
+      coleta: sessao.coletado
     };
 
   } catch (erro) {
     console.error("❌ Erro em gerarResposta:", erro.message);
     return {
-      resposta: "Desculpe, tive um problema ao processar sua resposta. Pode repetir de outra forma?",
-      coleta: {}
+      resposta: "Desculpe, houve um erro ao gerar a resposta. Pode tentar novamente?",
+      coleta: (sessao && sessao.coletado) ? sessao.coletado : {},
     };
   }
-};
+}
 
 module.exports = gerarResposta;
