@@ -10,6 +10,12 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public')); // Serve pei.html etc
 
+// ✅ Log básico para toda requisição HTTP
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} ${req.url}`);
+  next();
+});
+
 // ========== AUTENTICAÇÃO COM GOOGLE SHEETS ==========
 const auth = new google.auth.GoogleAuth({
   credentials: JSON.parse(process.env.GOOGLE_SA_JSON),
@@ -63,9 +69,10 @@ app.post('/pei/test', async (req, res) => {
       resource: { values }
     });
 
+    console.log("✅ Teste: lead gravado com sucesso.");
     res.status(200).json({ success: true, message: 'Lead registrado com sucesso!' });
   } catch (error) {
-    console.error('Erro ao gravar na planilha:', error);
+    console.error('❌ Erro ao gravar na planilha:', error);
     res.status(500).json({ success: false, error: 'Erro interno ao gravar na planilha.' });
   }
 });
@@ -78,6 +85,10 @@ app.post('/pei/ia', async (req, res) => {
     if (!pergunta) {
       return res.status(400).json({ error: 'Campo "pergunta" ou "mensagem" é obrigatório.' });
     }
+
+    // ✅ Log da pergunta e da sessão antes de processar
+    console.log("📨 Mensagem recebida:", pergunta);
+    console.log("🧠 Sessão atual:", JSON.stringify(sessao, null, 2));
 
     const resposta = await gerarResposta(pergunta, sessao);
 
@@ -117,7 +128,7 @@ app.post('/pei/ia', async (req, res) => {
 
     res.status(200).json(resposta);
   } catch (error) {
-    console.error('Erro na IA:', error);
+    console.error('❌ Erro na IA:', error);
     res.status(500).json({ error: 'Erro ao gerar resposta da IA.' });
   }
 });
@@ -129,5 +140,5 @@ app.get('/', (req, res) => {
 
 // ========== INICIAR SERVIDOR ==========
 app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
