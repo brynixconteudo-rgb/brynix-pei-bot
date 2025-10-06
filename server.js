@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const path = require('path'); // ⚠️ Para servir arquivos estáticos
 const { google } = require('googleapis');
 const peiRoutes = require('./apps/pei/pei'); // ✅ Router principal do PEI
 
@@ -9,7 +10,9 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static('public')); // Serve pei.html etc
+
+// ✅ Serve tudo que estiver em /public (pei.html etc.)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ========== AUTENTICAÇÃO COM GOOGLE SHEETS ==========
 const auth = new google.auth.GoogleAuth({
@@ -31,9 +34,9 @@ async function registrarLog(origem, acao, status, detalhes = '') {
   try {
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.SHEETS_SPREADSHEET_ID,
-      range: 'LOGS!A1',
+      range: 'LOGS!A1', // ⚠️ Nome correto da aba do log
       valueInputOption: 'USER_ENTERED',
-      resource: { values: linha }
+      requestBody: { values: linha } // 🔁 corrigido para requestBody
     });
     console.log(`📝 Log registrado: ${acao} - ${status}`);
   } catch (erro) {
@@ -84,7 +87,7 @@ app.post('/pei/test', async (req, res) => {
       spreadsheetId: process.env.SHEETS_SPREADSHEET_ID,
       range: 'Leads!A1',
       valueInputOption: 'USER_ENTERED',
-      resource: { values }
+      requestBody: { values } // 🔁 corrigido para requestBody
     });
 
     await registrarLog('Chat PEI', 'Teste de Gravação', 'Sucesso', nome || '[sem nome]');
@@ -98,6 +101,11 @@ app.post('/pei/test', async (req, res) => {
 
 // ========== ROTA PRINCIPAL DO PEI ==========
 app.use('/pei', peiRoutes); // ✅ Usa o roteador completo PEI
+
+// ✅ ⚠️ ESTA É A ROTA CRÍTICA PARA O IFRAMER DO GODADDY:
+app.get('/pei', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'pei.html'));
+});
 
 // ========== ROTA DE STATUS ==========
 app.get('/', (req, res) => {
