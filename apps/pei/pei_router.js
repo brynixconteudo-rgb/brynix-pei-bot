@@ -1,6 +1,6 @@
 // 📁 apps/pei/pei_router.js
 
-const { gerarResposta: gerarLivre } = require("./pei_ia_negocios");
+const { gerarRespostaNegocios } = require("../../modos/pei_ia_negocios"); // caminho correto ao novo nome
 const { gerarResposta: gerarEstruturado } = require("./pei_qualificacao_leads");
 
 // Sessão compartilhada em memória temporária por usuário
@@ -23,7 +23,7 @@ async function roteadorPEI(mensagem, sessao = {}) {
 
       if (escolha === "1") {
         sessao.estado = estados.LIVRE;
-        return await gerarLivre("Legal! 😊 Pode me perguntar qualquer coisa sobre IA ou como ela pode transformar sua empresa.", sessao);
+        return await gerarRespostaNegocios("Legal! 😊 Pode me perguntar qualquer coisa sobre IA ou como ela pode transformar sua empresa.", sessao);
       }
 
       if (escolha === "2") {
@@ -41,7 +41,7 @@ async function roteadorPEI(mensagem, sessao = {}) {
 
     // Etapa 2: Roteamento conforme estado
     if (sessao.estado === estados.LIVRE) {
-      return await gerarLivre(mensagem, sessao);
+      return await gerarRespostaNegocios(mensagem, sessao);
     }
 
     if (sessao.estado === estados.ESTRUTURADO) {
