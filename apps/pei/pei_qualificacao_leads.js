@@ -1,5 +1,7 @@
 // 📁 apps/pei/pei_qualificacao_leads.js
 
+const { salvarLead } = require("../../sheets");
+
 async function gerarRespostaQualificacao(mensagem, sessao = {}) {
   try {
     if (typeof sessao !== "object" || sessao === null) sessao = {};
@@ -49,6 +51,21 @@ async function gerarRespostaQualificacao(mensagem, sessao = {}) {
 
     if (!sessao.coletado.familiaridadeIA) {
       sessao.coletado.familiaridadeIA = mensagem.trim();
+
+      // 🔹 Salvar lead na planilha
+      try {
+        await salvarLead({
+          nome: sessao.coletado.nome || "",
+          empresa: sessao.coletado.empresa || "",
+          porte: sessao.coletado.setor || "",
+          desafio: "",
+          tipo_interacao: "qualificacao",
+          classificacao: "morno",
+          whatsapp: sessao.coletado.contato || "",
+        });
+      } catch (erroSalvar) {
+        console.error("⚠️ Erro ao salvar o lead:", erroSalvar.message);
+      }
 
       const resumo =
         `✨ Obrigado, ${sessao.coletado.nome}! Aqui está um resumo das suas informações:\n\n` +
