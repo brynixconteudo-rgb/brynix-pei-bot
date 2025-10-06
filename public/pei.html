@@ -169,18 +169,36 @@
       }
     }
 
-    function finalizarConversa() {
-      adicionarMensagem('bot', 'Conversa encerrada. Se precisar, estarei por aqui! 🧠✨');
+    async function finalizarConversa() {
+      const texto = "finalizar";
+      adicionarMensagem('user', texto);
+
+      try {
+        const resposta = await fetch('/pei', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ mensagem: texto })
+        });
+
+        if (!resposta.ok) throw new Error('Erro ao finalizar');
+        const dados = await resposta.json();
+        adicionarMensagem('bot', dados.resposta);
+      } catch (erro) {
+        adicionarMensagem('bot', '[Erro ao finalizar a conversa]');
+      }
     }
 
     function enviarEmail() {
       window.location.href = "mailto:contato@brynix.ai";
     }
+
     document.getElementById('mensagem').addEventListener('keypress', function (e) {
-  if (e.key === 'Enter') {
-    enviarMensagem();
-  }
-});
+      if (e.key === 'Enter') {
+        enviarMensagem();
+      }
+    });
   </script>
 </body>
 </html>
