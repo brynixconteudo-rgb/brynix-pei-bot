@@ -176,6 +176,11 @@
     function enviarEmail() {
       window.location.href = "mailto:contato@brynix.ai";
     }
+    document.getElementById('mensagem').addEventListener('keypress', function (e) {
+  if (e.key === 'Enter') {
+    enviarMensagem();
+  }
+});
   </script>
 </body>
 </html>
