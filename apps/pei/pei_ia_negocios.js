@@ -17,20 +17,15 @@ Sua missão neste modo é conversar livremente com visitantes curiosos sobre o u
 - Traga exemplos práticos.
 - Mostre entusiasmo com as possibilidades da IA.
 - Não tente vender nada, apenas inspirar e informar.
-
-Pode seguir.
 `;
 
-async function gerarRespostaNegocios(mensagem, sessao = {}) {
+async function gerarRespostaIA(mensagem, sessao = {}) {
   try {
-    // Inicialização segura da sessão
     if (typeof sessao !== "object" || sessao === null) sessao = {};
     if (!Array.isArray(sessao.historico)) sessao.historico = [];
 
-    // Salva mensagem do usuário
     sessao.historico.push({ de: "usuario", texto: mensagem });
 
-    // Monta histórico para o GPT
     const mensagens = [
       { role: "system", content: promptBase },
       ...sessao.historico.map(msg => ({
@@ -39,7 +34,6 @@ async function gerarRespostaNegocios(mensagem, sessao = {}) {
       })),
     ];
 
-    // Chama OpenAI
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: mensagens,
@@ -48,16 +42,14 @@ async function gerarRespostaNegocios(mensagem, sessao = {}) {
     });
 
     const resposta = completion.choices[0].message.content.trim();
-
-    // Salva resposta no histórico
     sessao.historico.push({ de: "bot", texto: resposta });
 
     return {
       resposta,
-      coleta: {}, // não coleta nada no modo livre
+      coleta: {},
     };
   } catch (erro) {
-    console.error("❌ Erro em gerarRespostaNegocios:", erro.message);
+    console.error("❌ Erro em gerarRespostaIA:", erro.message);
     return {
       resposta: "Desculpe, houve um erro ao gerar a resposta. Pode tentar novamente?",
       coleta: {},
@@ -65,5 +57,4 @@ async function gerarRespostaNegocios(mensagem, sessao = {}) {
   }
 }
 
-// ✅ Exporta com o nome que o roteador já espera
-module.exports = { gerarResposta: gerarRespostaNegocios };
+module.exports = { gerarRespostaIA };
