@@ -5,89 +5,144 @@
   <title>BRYNIX PEI</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background-color: #f5f5f5;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f1f1f1;
+      margin: 0;
+      padding: 0;
     }
-    #chat {
-      width: 90%;
-      max-width: 700px;
-      margin: 40px auto;
-      padding: 20px;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    #mensagens {
-      height: 300px;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      padding: 10px;
+
+    #chat-container {
+      width: 100%;
+      max-width: 600px;
+      margin: 20px auto;
       background: #fff;
-    }
-    #entrada {
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       display: flex;
-      margin-top: 10px;
+      flex-direction: column;
+      height: 85vh;
+      overflow: hidden;
     }
+
+    #chat-box {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .message {
+      max-width: 80%;
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 15px;
+    }
+
+    .bot {
+      align-self: flex-start;
+      background-color: #e2f0ff;
+      color: #2b2b2b;
+    }
+
+    .user {
+      align-self: flex-end;
+      background-color: #e5e5e5;
+      color: #000;
+    }
+
+    #chat-input {
+      display: flex;
+      padding: 10px;
+      border-top: 1px solid #ddd;
+      background-color: #fafafa;
+    }
+
     #mensagem {
       flex: 1;
       padding: 10px;
       border: 1px solid #ccc;
-      border-radius: 5px;
+      border-radius: 20px;
+      font-size: 15px;
+      outline: none;
     }
-    button {
+
+    #enviar {
       margin-left: 10px;
-      padding: 10px 15px;
-      border: none;
+      padding: 10px 18px;
       background-color: #007bff;
       color: white;
-      border-radius: 5px;
+      border: none;
+      border-radius: 20px;
       cursor: pointer;
+      transition: background-color 0.2s ease;
     }
-    button:hover {
+
+    #enviar:hover {
       background-color: #0056b3;
     }
-    .user {
-      font-weight: bold;
-      color: #000;
+
+    #chat-actions {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px;
+      background-color: #fafafa;
     }
-    .ia {
-      font-weight: bold;
-      color: #444;
+
+    #chat-actions button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 20px;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
     }
-    .msg {
-      margin: 5px 0;
+
+    .btn-finalizar {
+      background-color: #6c757d;
+    }
+
+    .btn-email {
+      background-color: #28a745;
     }
   </style>
 </head>
 <body>
-  <div id="chat">
-    <div id="mensagens">
-      <div class="msg ia">
-        BRYNIX: Olá! 👋 Sou a ALICE, sua assistente inteligente. Como posso te ajudar hoje?<br><br>
+  <div id="chat-container">
+    <div id="chat-box">
+      <div class="message bot">
+        <strong>BRYNIX:</strong> 👋 Olá! Sou a ALICE, sua assistente inteligente. Como posso te ajudar hoje?<br><br>
         1️⃣ Quero saber como a IA pode transformar negócios<br>
         2️⃣ Gostaria de saber mais sobre a BRYNIX e como a IA pode me ajudar<br>
         3️⃣ Encerrar a conversa
       </div>
     </div>
-    <div id="entrada">
+
+    <div id="chat-input">
       <input type="text" id="mensagem" placeholder="Digite sua mensagem..." />
-      <button onclick="enviarMensagem()">Enviar</button>
+      <button id="enviar" onclick="enviarMensagem()">Enviar</button>
     </div>
-    <div style="margin-top: 10px; display: flex; justify-content: space-between;">
-      <button onclick="finalizarConversa()" style="background-color: #6c757d;">Finalizar Conversa</button>
-      <button onclick="enviarEmail()" style="background-color: #28a745;">Enviar por E-mail</button>
+
+    <div id="chat-actions">
+      <button class="btn-finalizar" onclick="finalizarConversa()">Finalizar Conversa</button>
+      <button class="btn-email" onclick="enviarEmail()">Enviar por E-mail</button>
     </div>
   </div>
 
   <script>
-    const mensagensDiv = document.getElementById('mensagens');
+    const chatBox = document.getElementById('chat-box');
 
     function adicionarMensagem(remetente, texto) {
-      const novaMensagem = document.createElement('div');
-      novaMensagem.classList.add('msg', remetente);
-      novaMensagem.innerHTML = `${remetente === 'user' ? 'Você' : 'BRYNIX'}: ${texto}`;
-      mensagensDiv.appendChild(novaMensagem);
-      mensagensDiv.scrollTop = mensagensDiv.scrollHeight;
+      const msgDiv = document.createElement('div');
+      msgDiv.classList.add('message', remetente);
+      const nome = remetente === 'user' ? '<strong>Você:</strong> ' : '<strong>BRYNIX:</strong> ';
+      msgDiv.innerHTML = nome + texto;
+      chatBox.appendChild(msgDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
 
     async function enviarMensagem() {
@@ -98,7 +153,6 @@
       input.value = '';
 
       try {
-        // 🔁 Ajustado para /pei
         const resposta = await fetch('/pei', {
           method: 'POST',
           headers: {
@@ -107,19 +161,16 @@
           body: JSON.stringify({ mensagem: texto })
         });
 
-        if (!resposta.ok) {
-          throw new Error('Erro ao comunicar com a IA');
-        }
-
+        if (!resposta.ok) throw new Error('Erro na comunicação com a IA');
         const dados = await resposta.json();
-        adicionarMensagem('ia', dados.resposta);
+        adicionarMensagem('bot', dados.resposta);
       } catch (erro) {
-        adicionarMensagem('ia', '[Erro ao comunicar com a IA]');
+        adicionarMensagem('bot', '[Erro ao comunicar com a IA]');
       }
     }
 
     function finalizarConversa() {
-      adicionarMensagem('ia', 'Conversa encerrada. Se precisar, estarei por aqui! 🧠✨');
+      adicionarMensagem('bot', 'Conversa encerrada. Se precisar, estarei por aqui! 🧠✨');
     }
 
     function enviarEmail() {
