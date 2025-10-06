@@ -1,6 +1,6 @@
 const { google } = require("googleapis");
 
-// Autenticação via Service Account
+// 🔐 Autenticação via Service Account
 const auth = new google.auth.GoogleAuth({
   credentials: JSON.parse(process.env.GOOGLE_SA_JSON),
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
@@ -8,7 +8,9 @@ const auth = new google.auth.GoogleAuth({
 
 const sheets = google.sheets({ version: "v4", auth });
 
-// ⏺️ Função para salvar um novo lead na aba "Leads"
+/**
+ * ⏺️ Função para salvar um novo lead na aba "Leads"
+ */
 async function salvarLead({
   timestamp = new Date().toLocaleString("pt-BR"),
   origem = "Chat PEI",
@@ -27,21 +29,21 @@ async function salvarLead({
   ip_hash = ""
 }) {
   const valores = [[
-    timestamp,
-    origem,
-    nome,
-    email,
-    whatsapp,
-    empresa,
-    porte,
-    desafio,
-    tipo_interacao,
-    classificacao,
-    utm_source,
-    utm_medium,
-    utm_campaign,
-    request_id,
-    ip_hash
+    String(timestamp),
+    String(origem),
+    String(nome),
+    String(email),
+    String(whatsapp),
+    String(empresa),
+    String(porte),
+    String(desafio),
+    String(tipo_interacao),
+    String(classificacao),
+    String(utm_source),
+    String(utm_medium),
+    String(utm_campaign),
+    String(request_id),
+    String(ip_hash)
   ]];
 
   try {
@@ -53,6 +55,7 @@ async function salvarLead({
         values: valores,
       },
     });
+
     console.log("✅ Lead salvo com sucesso na planilha.");
     return true;
   } catch (error) {
@@ -61,12 +64,16 @@ async function salvarLead({
   }
 }
 
-// 📄 Função para salvar LOG de sessão finalizada na aba "Logs"
+/**
+ * 📄 Função para salvar LOG de sessão finalizada na aba "Logs"
+ */
 async function gravarLogPEI(idSessao, sessao = {}) {
   try {
     const dataHora = new Date().toISOString();
 
-    const historicoString = sessao.historico
+    const historicoArray = Array.isArray(sessao.historico) ? sessao.historico : [];
+
+    const historicoString = historicoArray
       .map((h) => {
         const quem = h.system ? "🤖" : "👤";
         const conteudo = h.mensagem || h.system || "";
@@ -74,13 +81,13 @@ async function gravarLogPEI(idSessao, sessao = {}) {
       })
       .join("\n");
 
-    const coletado = JSON.stringify(sessao.coletado || {});
+    const coletadoString = JSON.stringify(sessao.coletado || {});
 
     const valores = [[
-      dataHora,
-      idSessao,
-      historicoString,
-      coletado
+      String(dataHora),
+      String(idSessao),
+      String(historicoString),
+      String(coletadoString)
     ]];
 
     await sheets.spreadsheets.values.append({
