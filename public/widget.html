@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Widget ALICE</title>
+  <style>
+    #chat-button {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      background-color: #00b894;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      font-size: 28px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 9999;
+    }
+
+    #chat-modal {
+      display: none;
+      position: fixed;
+      bottom: 90px;
+      right: 25px;
+      width: 400px;
+      height: 600px;
+      background-color: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      z-index: 9998;
+      overflow: hidden;
+    }
+
+    #chat-modal iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    #close-button {
+      position: absolute;
+      top: 6px;
+      right: 10px;
+      font-size: 16px;
+      background: none;
+      border: none;
+      color: #555;
+      cursor: pointer;
+      z-index: 10000;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="chat-modal">
+    <button id="close-button">✕</button>
+    <iframe src="/pei"></iframe>
+  </div>
+
+  <button id="chat-button">💬</button>
+
+  <script>
+    const chatButton = document.getElementById('chat-button');
+    const chatModal = document.getElementById('chat-modal');
+    const closeButton = document.getElementById('close-button');
+
+    chatButton.onclick = () => {
+      chatModal.style.display = 'block';
+    };
+
+    closeButton.onclick = () => {
+      chatModal.style.display = 'none';
+    };
+  </script>
+
+</body>
+</html>
