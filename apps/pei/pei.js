@@ -5,8 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   let sessao = {
     historico: [],
-    coletado: {},
-    encerrado: false // ✅ Novo controle de encerramento
+    coletado: {}
   };
 
   function appendMessage(role, content) {
@@ -17,16 +16,21 @@ document.addEventListener('DOMContentLoaded', function () {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 
+  function toggleInput(disabled) {
+    input.disabled = disabled;
+    sendButton.disabled = disabled;
+    if (!disabled) input.focus();
+  }
+
   async function enviarMensagem() {
     const userInput = input.value.trim();
-    if (!userInput || sessao.encerrado) return;
+    if (!userInput || sessao.coletado.encerrado) return;
 
     sessao.historico.push({ de: 'usuario', texto: userInput });
     appendMessage('user', userInput);
 
     input.value = '';
-    input.disabled = true;
-    sendButton.disabled = true;
+    toggleInput(true);
 
     try {
       const response = await fetch('/pei/ia', {
@@ -39,28 +43,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const data = await response.json();
       const respostaIA = data.resposta?.trim() || '[Resposta vazia da IA]';
+      const coleta = data.coleta || {};
 
       sessao.historico.push({ de: 'bot', texto: respostaIA });
-      sessao.coletado = data.coleta || sessao.coletado;
+      sessao.coletado = coleta;
 
       appendMessage('assistant', respostaIA);
 
-      // ✅ Verifica se a conversa foi encerrada
-      if (respostaIA.includes('Foi ótimo conversar com você')) {
-        sessao.encerrado = true;
-        input.disabled = true;
-        sendButton.disabled = true;
+      // ✅ Se detectado encerramento pelo back-end
+      if (coleta.encerrado === true) {
+        toggleInput(true);
+      } else {
+        toggleInput(false);
       }
 
     } catch (error) {
+      console.error('❌ Erro ao enviar mensagem:', error);
       appendMessage('assistant', '[Erro ao processar a resposta da IA]');
-      console.error('Erro ao enviar mensagem:', error);
-    } finally {
-      if (!sessao.encerrado) {
-        input.disabled = false;
-        sendButton.disabled = false;
-        input.focus();
-      }
+      toggleInput(false);
     }
   }
 
