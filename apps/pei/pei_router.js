@@ -3,17 +3,31 @@
 const { gerarRespostaNegocios } = require("./pei_ia_negocios");
 const { gerarRespostaQualificacao } = require("./pei_qualificacao_leads");
 
-// Sessão compartilhada em memória temporária por usuário
+// Estados possíveis da conversa
 const estados = {
   LIVRE: "livre",
   ESTRUTURADO: "estruturado",
   INDEFINIDO: undefined,
 };
 
-async function roteadorPEI(mensagem, sessao = {}) {
+// Sessões em memória temporária (resetam ao reiniciar o servidor)
+const sessoes = {}; // chave: idSessao, valor: objeto de sessão
+
+async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
   try {
-    // Inicialização segura da sessão
-    if (typeof sessao !== "object" || sessao === null) sessao = {};
+    // Inicializa a sessão do usuário, se ainda não existir
+    if (!sessoes[idSessao]) {
+      sessoes[idSessao] = {
+        estado: estados.INDEFINIDO,
+        historico: [],
+        coletado: {},
+      };
+    }
+
+    const sessao = sessoes[idSessao];
+
+    // Garante que os campos essenciais existam
+    if (typeof sessao !== "object" || sessao === null) sessoes[idSessao] = {};
     if (!Array.isArray(sessao.historico)) sessao.historico = [];
     if (typeof sessao.estado === "undefined") sessao.estado = estados.INDEFINIDO;
 
@@ -23,23 +37,28 @@ async function roteadorPEI(mensagem, sessao = {}) {
 
       if (escolha === "1") {
         sessao.estado = estados.LIVRE;
-        return await gerarRespostaNegocios("Legal! 😊 Pode me perguntar qualquer coisa sobre IA ou como ela pode transformar sua empresa.", sessao);
+        return await gerarRespostaNegocios(
+          "Legal! 😊 Pode me perguntar qualquer coisa sobre IA ou como ela pode transformar sua empresa.",
+          sessao
+        );
       }
 
       if (escolha === "2") {
         sessao.estado = estados.ESTRUTURADO;
-        return await gerarRespostaQualificacao("Ótimo! Para que eu possa te apresentar algo relevante, preciso te fazer algumas perguntas rápidas. Pode ser? 😊", sessao);
+        return await gerarRespostaQualificacao(
+          "Ótimo! Para que eu possa te apresentar algo relevante, preciso te fazer algumas perguntas rápidas. Pode ser? 😊",
+          sessao
+        );
       }
-
-      // Dentro de: if (sessao.estado === estados.INDEFINIDO) { ... }
 
       if (escolha === "3") {
         return {
-        resposta: "Obrigado por conversar com a BRYNIX! 😊 Se quiser saber mais, é só chamar novamente. Até breve!",
-        coleta: sessao.coletado || {},
+          resposta: "Obrigado por conversar com a BRYNIX! 😊 Se quiser saber mais, é só chamar novamente. Até breve!",
+          coleta: sessao.coletado || {},
         };
-        }
-      
+      }
+
+      // Se não for 1, 2 ou 3, apresenta novamente o menu
       const promptMenu = `Olá! 👋 Bem-vindo à BRYNIX. Posso te ajudar de duas formas:\n\n1️⃣ *Quero bater um papo sobre como a Inteligência Artificial pode transformar minha empresa!*\n\n2️⃣ *Quero saber como a BRYNIX pode me ajudar com soluções reais.*\n\nÉ só responder com "1" ou "2" e seguimos juntos. 😊`;
 
       return {
@@ -48,7 +67,7 @@ async function roteadorPEI(mensagem, sessao = {}) {
       };
     }
 
-    // Etapa 2: Roteamento conforme estado
+    // Etapa 2: Roteamento conforme estado atual da sessão
     if (sessao.estado === estados.LIVRE) {
       return await gerarRespostaNegocios(mensagem, sessao);
     }
@@ -57,7 +76,7 @@ async function roteadorPEI(mensagem, sessao = {}) {
       return await gerarRespostaQualificacao(mensagem, sessao);
     }
 
-    // Fallback
+    // Fallback — estado não reconhecido
     return {
       resposta: "Desculpe, algo deu errado aqui no PEI. Pode tentar de novo? 🙏",
       coleta: sessao.coletado || {},
@@ -66,7 +85,7 @@ async function roteadorPEI(mensagem, sessao = {}) {
     console.error("❌ Erro no roteador PEI:", erro);
     return {
       resposta: "Ops! Tivemos um problema interno. Pode tentar novamente?",
-      coleta: sessao.coletado || {},
+      coleta: {},
     };
   }
 }
