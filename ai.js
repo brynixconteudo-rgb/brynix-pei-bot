@@ -100,24 +100,25 @@ async function gerarResposta(mensagem, sessao = {}) {
     console.log("💡 Dados coletados até agora:", sessao.coletado);
 
     const completo =
-      sessao.coletado.nome &&
-      sessao.coletado.empresa &&
-      sessao.coletado.contato &&
-      sessao.coletado.desafio &&
-      sessao.coletado.classificacao;
+  sessao.coletado.nome &&
+  sessao.coletado.empresa &&
+  sessao.coletado.contato &&
+  sessao.coletado.desafio; // porte e classificação virão depois se vierem
 
-    if (completo) {
-      const fechamento = `Perfeito! 😊 Com todas essas informações, já posso passar seu contato para nosso time.
+if (completo && !sessao.coletado.encerrado) {
+  sessao.coletado.encerrado = true;
+
+  const fechamento = `Perfeito! 😊 Com todas essas informações, já posso passar seu contato para nosso time.
 
 A equipe da BRYNIX vai falar com você em breve para entender melhor o seu cenário e te mostrar como nossas soluções de IA podem gerar valor real para o seu negócio.
 
 Obrigado por compartilhar tudo com a gente. Foi ótimo conversar com você! 👋`;
 
-      return {
-        resposta: fechamento,
-        coleta: sessao.coletado,
-      };
-    }
+  return {
+    resposta: fechamento,
+    coleta: sessao.coletado
+  };
+}
 
     return {
       resposta,
