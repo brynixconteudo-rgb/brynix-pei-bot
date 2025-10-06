@@ -11,44 +11,62 @@ async function gerarRespostaQualificacao(mensagem, sessao = {}) {
     // Guarda a mensagem recebida no histórico
     sessao.historico.push({ de: "usuario", texto: mensagem });
 
-    // Etapas de qualificação — você pode adicionar mais abaixo
+    // Etapas de qualificação
     if (!sessao.coletado.nome) {
       sessao.coletado.nome = mensagem.trim();
-      const resposta = "Ótimo, " + sessao.coletado.nome + "! Qual é o nome da sua empresa?";
+      const resposta = `Ótimo, ${sessao.coletado.nome}! Qual é o nome da sua empresa?`;
       sessao.historico.push({ de: "bot", texto: resposta });
       return { resposta, coleta: sessao.coletado };
     }
 
     if (!sessao.coletado.empresa) {
       sessao.coletado.empresa = mensagem.trim();
-      const resposta = "Perfeito. De qual setor ou segmento é sua empresa?";
+      const resposta = `Perfeito. De qual setor ou segmento é sua empresa?`;
       sessao.historico.push({ de: "bot", texto: resposta });
       return { resposta, coleta: sessao.coletado };
     }
 
     if (!sessao.coletado.setor) {
       sessao.coletado.setor = mensagem.trim();
-      const resposta = "Obrigado. Qual meio de contato você prefere para falarmos? (WhatsApp ou E-mail, e o respectivo dado)";
+      const resposta = `Legal. Qual o seu cargo ou função na empresa?`;
+      sessao.historico.push({ de: "bot", texto: resposta });
+      return { resposta, coleta: sessao.coletado };
+    }
+
+    if (!sessao.coletado.cargo) {
+      sessao.coletado.cargo = mensagem.trim();
+      const resposta = `Obrigado. Qual meio de contato você prefere para falarmos? (WhatsApp ou E-mail, e o respectivo dado)`;
       sessao.historico.push({ de: "bot", texto: resposta });
       return { resposta, coleta: sessao.coletado };
     }
 
     if (!sessao.coletado.contato) {
       sessao.coletado.contato = mensagem.trim();
-      const resposta = "Última pergunta: Você já conhece ou utiliza alguma solução de IA nos seus processos?";
+      const resposta = `Última pergunta: Você já conhece ou utiliza alguma solução de IA nos seus processos?`;
       sessao.historico.push({ de: "bot", texto: resposta });
       return { resposta, coleta: sessao.coletado };
     }
 
     if (!sessao.coletado.familiaridadeIA) {
       sessao.coletado.familiaridadeIA = mensagem.trim();
-      const resposta = `Maravilha, ${sessao.coletado.nome}! 👍 Seus dados foram registrados com sucesso.\n\nVocê pode visitar nosso site em [https://brynix.ai](https://brynix.ai) enquanto nossa equipe entra em contato com você em breve. Até logo!`;
-      sessao.historico.push({ de: "bot", texto: resposta });
-      return { resposta, coleta: sessao.coletado };
+
+      const resumo =
+        `✨ Obrigado, ${sessao.coletado.nome}! Aqui está um resumo das suas informações:\n\n` +
+        `• Nome: ${sessao.coletado.nome}\n` +
+        `• Empresa: ${sessao.coletado.empresa}\n` +
+        `• Setor: ${sessao.coletado.setor}\n` +
+        `• Cargo: ${sessao.coletado.cargo}\n` +
+        `• Contato: ${sessao.coletado.contato}\n` +
+        `• Já usa IA: ${sessao.coletado.familiaridadeIA}\n\n` +
+        `Nosso time da BRYNIX entrará em contato com você em breve. Enquanto isso, visite nosso site: https://brynix.ai 🚀`;
+
+      sessao.historico.push({ de: "bot", texto: resumo });
+
+      return { resposta: resumo, coleta: sessao.coletado };
     }
 
-    // Se tudo foi preenchido, confirma e encerra
-    const resposta = "Você já respondeu todas as perguntas. Nossa equipe entrará em contato em breve!";
+    // Se tudo foi preenchido, evita loops
+    const resposta = "Você já respondeu todas as perguntas. Obrigado novamente!";
     return { resposta, coleta: sessao.coletado };
 
   } catch (erro) {
