@@ -1,4 +1,5 @@
 // 📁 apps/pei/pei_ia_negocios.js
+
 const OpenAI = require("openai");
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -17,9 +18,11 @@ Sua missão neste modo é conversar livremente com visitantes curiosos sobre o u
 - Traga exemplos práticos.
 - Mostre entusiasmo com as possibilidades da IA.
 - Não tente vender nada, apenas inspirar e informar.
+
+Pode seguir.
 `;
 
-async function gerarRespostaIA(mensagem, sessao = {}) {
+async function gerarRespostaNegocios(mensagem, sessao = {}) {
   try {
     if (typeof sessao !== "object" || sessao === null) sessao = {};
     if (!Array.isArray(sessao.historico)) sessao.historico = [];
@@ -46,10 +49,10 @@ async function gerarRespostaIA(mensagem, sessao = {}) {
 
     return {
       resposta,
-      coleta: {},
+      coleta: {}, // não coleta nada nesse modo
     };
   } catch (erro) {
-    console.error("❌ Erro em gerarRespostaIA:", erro.message);
+    console.error("❌ Erro em gerarRespostaNegocios:", erro.message);
     return {
       resposta: "Desculpe, houve um erro ao gerar a resposta. Pode tentar novamente?",
       coleta: {},
@@ -57,4 +60,4 @@ async function gerarRespostaIA(mensagem, sessao = {}) {
   }
 }
 
-module.exports = { gerarRespostaIA };
+module.exports = { gerarRespostaNegocios };
