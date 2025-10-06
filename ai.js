@@ -1,10 +1,8 @@
 const OpenAI = require("openai");
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// 🎯 System Prompt
-const systemPrompt = `
+// 🎯 Prompt base
+const promptBase = `
 Você é o PEI (Porta de Entrada Inteligente), um assistente de recepção da BRYNIX.
 
 🧠 Sua missão é recepcionar visitantes do site com leveza, inteligência e simpatia — conduzindo uma conversa fluida, humana e profissional.
@@ -30,15 +28,38 @@ Você é o PEI (Porta de Entrada Inteligente), um assistente de recepção da BR
 - Fluida, como um humano real
 `;
 
+// 📌 Construtor dinâmico do mapa da jornada
+function construirMapaJornada(coletado) {
+  const pendentes = [];
+
+  if (!coletado.nome) pendentes.push("nome da pessoa");
+  if (!coletado.empresa) pendentes.push("nome da empresa");
+  if (!coletado.contato) pendentes.push("forma de contato");
+  if (!coletado.desafio) pendentes.push("desafio principal");
+  if (!coletado.porte) pendentes.push("porte da empresa");
+  if (!coletado.classificacao) pendentes.push("nível de interesse");
+
+  if (pendentes.length === 0) {
+    return "✅ Todos os dados foram coletados. Agora, finalize a conversa com simpatia e reforce que a BRYNIX entrará em contato.";
+  }
+
+  return `Ainda faltam os seguintes dados para entender melhor o visitante:\n- ${pendentes.join("\n- ")}\nConduza a conversa de forma natural para obter essas informações.`;
+}
+
 // 🧠 Formatar histórico no padrão OpenAI
-function construirMensagens(historico) {
-  const mensagens = [{ role: "system", content: systemPrompt }];
+function construirMensagens(historico, coletado) {
+  const contextoDinamico = construirMapaJornada(coletado);
+  const mensagens = [
+    { role: "system", content: `${promptBase}\n\n${contextoDinamico}` }
+  ];
+
   for (const msg of historico) {
     mensagens.push({
       role: msg.de === "usuario" ? "user" : "assistant",
       content: msg.texto,
     });
   }
+
   return mensagens;
 }
 
@@ -71,10 +92,9 @@ async function gerarResposta(mensagem, sessao = {}) {
     if (!Array.isArray(sessao.historico)) sessao.historico = [];
     if (typeof sessao.coletado !== "object" || sessao.coletado === null) sessao.coletado = {};
 
-    // Adiciona ao histórico
     sessao.historico.push({ de: "usuario", texto: mensagem });
 
-    const mensagens = construirMensagens(sessao.historico);
+    const mensagens = construirMensagens(sessao.historico, sessao.coletado);
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -87,10 +107,9 @@ async function gerarResposta(mensagem, sessao = {}) {
 
     sessao.historico.push({ de: "bot", texto: resposta });
 
-    // Juntar todas mensagens anteriores para extrair dados
+    // Atualizar coleta
     const historicoCompleto = sessao.historico.map(h => h.texto).join("\n");
     const dadosExtraidos = extrairDados(historicoCompleto);
-
     for (const chave in dadosExtraidos) {
       if (!sessao.coletado[chave]) {
         sessao.coletado[chave] = dadosExtraidos[chave];
@@ -100,25 +119,25 @@ async function gerarResposta(mensagem, sessao = {}) {
     console.log("💡 Dados coletados até agora:", sessao.coletado);
 
     const completo =
-  sessao.coletado.nome &&
-  sessao.coletado.empresa &&
-  sessao.coletado.contato &&
-  sessao.coletado.desafio; // porte e classificação virão depois se vierem
+      sessao.coletado.nome &&
+      sessao.coletado.empresa &&
+      sessao.coletado.contato &&
+      sessao.coletado.desafio;
 
-if (completo && !sessao.coletado.encerrado) {
-  sessao.coletado.encerrado = true;
+    if (completo && !sessao.coletado.encerrado) {
+      sessao.coletado.encerrado = true;
 
-  const fechamento = `Perfeito! 😊 Com todas essas informações, já posso passar seu contato para nosso time.
+      const fechamento = `Perfeito! 😊 Com todas essas informações, já posso passar seu contato para nosso time.
 
 A equipe da BRYNIX vai falar com você em breve para entender melhor o seu cenário e te mostrar como nossas soluções de IA podem gerar valor real para o seu negócio.
 
 Obrigado por compartilhar tudo com a gente. Foi ótimo conversar com você! 👋`;
 
-  return {
-    resposta: fechamento,
-    coleta: sessao.coletado
-  };
-}
+      return {
+        resposta: fechamento,
+        coleta: sessao.coletado
+      };
+    }
 
     return {
       resposta,
