@@ -1,7 +1,7 @@
 // 📁 apps/pei/pei_router.js
 
-const { gerarResposta: gerarLivre } = require("../../pei_free");
-const { gerarResposta: gerarEstruturado } = require("../../pei_structured");
+const { gerarResposta: gerarLivre } = require("./pei_ia_negocios");
+const { gerarResposta: gerarEstruturado } = require("./pei_qualificacao_leads");
 
 // Sessão compartilhada em memória temporária por usuário
 const estados = {
@@ -17,7 +17,7 @@ async function roteadorPEI(mensagem, sessao = {}) {
     if (!Array.isArray(sessao.historico)) sessao.historico = [];
     if (typeof sessao.estado === "undefined") sessao.estado = estados.INDEFINIDO;
 
-    // Etapa 1: Se ainda não escolheu rota, apresenta menu
+    // Etapa 1: Menu inicial
     if (sessao.estado === estados.INDEFINIDO) {
       const escolha = mensagem.trim().toLowerCase();
 
@@ -31,8 +31,7 @@ async function roteadorPEI(mensagem, sessao = {}) {
         return await gerarEstruturado("Ótimo! Para que eu possa te apresentar algo relevante, preciso te fazer algumas perguntas rápidas. Pode ser? 😊", sessao);
       }
 
-      // Caso não tenha escolhido ainda, oferece o menu
-      const promptMenu = `Olá! 👋\nBem-vindo à BRYNIX. Posso te ajudar de duas formas:\n\n1️⃣ Gostaria de bater um papo sobre *como a Inteligência Artificial pode transformar seu negócio*?\n\n2️⃣ Quer saber mais sobre *nossas soluções e como podemos te ajudar na prática*?\n\nÉ só responder com \"1\" ou \"2\" e seguimos por esse caminho. 😊`;
+      const promptMenu = `Olá! 👋 Bem-vindo à BRYNIX. Posso te ajudar de duas formas:\n\n1️⃣ *Quero bater um papo sobre como a Inteligência Artificial pode transformar minha empresa!*\n\n2️⃣ *Quero saber como a BRYNIX pode me ajudar com soluções reais.*\n\nÉ só responder com "1" ou "2" e seguimos juntos. 😊`;
 
       return {
         resposta: promptMenu,
@@ -40,7 +39,7 @@ async function roteadorPEI(mensagem, sessao = {}) {
       };
     }
 
-    // Etapa 2: Roteia conforme escolha feita
+    // Etapa 2: Roteamento conforme estado
     if (sessao.estado === estados.LIVRE) {
       return await gerarLivre(mensagem, sessao);
     }
@@ -51,7 +50,7 @@ async function roteadorPEI(mensagem, sessao = {}) {
 
     // Fallback
     return {
-      resposta: "Desculpe, algo deu errado no roteador do PEI. Pode tentar novamente?",
+      resposta: "Desculpe, algo deu errado aqui no PEI. Pode tentar de novo? 🙏",
       coleta: sessao.coletado || {},
     };
   } catch (erro) {
