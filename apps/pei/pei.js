@@ -1,3 +1,5 @@
+// 📁 public/pei.js
+
 document.addEventListener('DOMContentLoaded', function () {
   const input = document.getElementById('user-input');
   const sendButton = document.getElementById('send-button');
@@ -33,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function () {
     toggleInput(true);
 
     try {
-      const response = await fetch('/pei/ia', {
+      const response = await fetch('/pei', { // 🔁 alterado de "/pei/ia" para "/pei"
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessao, mensagem: userInput })
