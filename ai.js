@@ -3,7 +3,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// 🎯 System Prompt (PEI V1.1)
+// 🎯 System Prompt
 const systemPrompt = `
 Você é o PEI (Porta de Entrada Inteligente), um assistente de recepção da BRYNIX.
 
@@ -18,15 +18,10 @@ Você é o PEI (Porta de Entrada Inteligente), um assistente de recepção da BR
 - Se está apenas conhecendo ou realmente interessado agora
 
 ⚠️ Importante:
-- **Nunca reinicie a conversa**.
-- **Nunca repita perguntas já respondidas**.
+- Nunca reinicie a conversa.
+- Nunca repita perguntas já respondidas.
 - Sempre considere tudo que foi dito antes.
 - Seja natural, traga variações nas frases e conduza como quem está ouvindo de verdade.
-
-📞 Quando já tiver todos os dados, encerre a conversa com um tom profissional e simpático:
-- Confirme que a equipe da BRYNIX vai entrar em contato.
-- Agradeça e reforce o compromisso de impacto real nos negócios com IA.
-- Encerre com leveza, sem soar robótico.
 
 ✨ Estilo de fala:
 - Profissional, sem ser fria
@@ -35,37 +30,32 @@ Você é o PEI (Porta de Entrada Inteligente), um assistente de recepção da BR
 - Fluida, como um humano real
 `;
 
-// 🧠 Reconstruir histórico real em formato messages[]
+// 🧠 Formatar histórico no padrão OpenAI
 function construirMensagens(historico) {
-  const mensagens = [
-    { role: 'system', content: systemPrompt }
-  ];
-
+  const mensagens = [{ role: "system", content: systemPrompt }];
   for (const msg of historico) {
     mensagens.push({
-      role: msg.de === 'usuario' ? 'user' : 'assistant',
-      content: msg.texto
+      role: msg.de === "usuario" ? "user" : "assistant",
+      content: msg.texto,
     });
   }
-
   return mensagens;
 }
 
-// 🔍 Extração de dados via regex (flexível e tolerante)
-function extrairDados(resposta) {
+// 🔍 Regex inteligente
+function extrairDados(texto) {
   const coleta = {};
-
   const regexes = {
     nome: /(?:meu nome é|me chamo|sou o|sou a|sou)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s[A-ZÀ-Ú][a-zà-ú]+)?)/i,
     empresa: /(?:minha empresa|empresa (?:chama-se|se chama|é|nome é)|sou (?:da|do|de)\s+(?:loja|empresa)?\s*|trabalho (?:na|no|em)\s+)([A-Z0-9&.\- ]{3,})/i,
     contato: /(\(?\d{2}\)?\s?\d{4,5}[-\s]?\d{4})|([a-z0-9_.+-]+@[a-z0-9-]+\.[a-z.]+)/i,
     porte: /\b(micro|pequena|média|grande)\b/i,
     desafio: /(?:desafio|problema|dificuldade|questão|objetivo|estou buscando|quero|preciso|gostaria de)[^.!?\n]{10,}/i,
-    classificacao: /\b(quente|morno|frio)\b/i
+    classificacao: /\b(quente|morno|frio)\b/i,
   };
 
   for (const campo in regexes) {
-    const match = resposta.match(regexes[campo]);
+    const match = texto.match(regexes[campo]);
     if (match) {
       coleta[campo] = match[1] || match[0];
     }
@@ -74,18 +64,16 @@ function extrairDados(resposta) {
   return coleta;
 }
 
-// 🤖 Função principal de geração da resposta
+// 🤖 Resposta principal
 async function gerarResposta(mensagem, sessao = {}) {
   try {
-    // Estrutura segura
-    if (typeof sessao !== 'object' || sessao === null) sessao = {};
+    if (typeof sessao !== "object" || sessao === null) sessao = {};
     if (!Array.isArray(sessao.historico)) sessao.historico = [];
-    if (typeof sessao.coletado !== 'object' || sessao.coletado === null) sessao.coletado = {};
+    if (typeof sessao.coletado !== "object" || sessao.coletado === null) sessao.coletado = {};
 
-    // Adiciona a nova mensagem do usuário ao histórico
+    // Adiciona ao histórico
     sessao.historico.push({ de: "usuario", texto: mensagem });
 
-    // Prepara histórico formatado
     const mensagens = construirMensagens(sessao.historico);
 
     const completion = await openai.chat.completions.create({
@@ -97,11 +85,11 @@ async function gerarResposta(mensagem, sessao = {}) {
 
     const resposta = completion.choices[0].message.content.trim();
 
-    // Adiciona resposta ao histórico
     sessao.historico.push({ de: "bot", texto: resposta });
 
-    // Extrai dados combinando entrada + saída
-    const dadosExtraidos = extrairDados(`${mensagem}\n${resposta}`);
+    // Juntar todas mensagens anteriores para extrair dados
+    const historicoCompleto = sessao.historico.map(h => h.texto).join("\n");
+    const dadosExtraidos = extrairDados(historicoCompleto);
 
     for (const chave in dadosExtraidos) {
       if (!sessao.coletado[chave]) {
@@ -127,20 +115,19 @@ Obrigado por compartilhar tudo com a gente. Foi ótimo conversar com você! 👋
 
       return {
         resposta: fechamento,
-        coleta: sessao.coletado
+        coleta: sessao.coletado,
       };
     }
 
     return {
       resposta,
-      coleta: sessao.coletado
+      coleta: sessao.coletado,
     };
-
   } catch (erro) {
     console.error("❌ Erro em gerarResposta:", erro.message);
     return {
       resposta: "Desculpe, houve um erro ao gerar a resposta. Pode tentar novamente?",
-      coleta: (sessao && sessao.coletado) ? sessao.coletado : {},
+      coleta: sessao.coletado || {},
     };
   }
 }
