@@ -26,8 +26,12 @@ async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
 
     // 🛑 Intercepta comando de finalização em qualquer estado
     if (msg.includes("finalizar") || msg.includes("encerrar")) {
-      delete sessoes[idSessao];
-
+      sessao.historico.push({ mensagem: msg, system: "Conversa finalizada pelo usuário" });
+      sessoes[idSessao] = {
+      estado: estados.INDEFINIDO,
+      historico: [],
+      coletado: {},
+    };
       const promptMenu = `👋 Olá! Sou a ALICE, sua assistente inteligente. Como posso te ajudar hoje?\n\n` +
         `1️⃣ Quero saber como a IA pode transformar negócios\n\n` +
         `2️⃣ Gostaria de saber mais sobre a BRYNIX e como a IA pode me ajudar\n\n` +
