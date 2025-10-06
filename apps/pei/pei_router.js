@@ -63,12 +63,19 @@ async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
         );
       }
 
-      if (msg === "3") {
-        return {
-          resposta: "Obrigado por conversar com a BRYNIX! 😊 Se quiser saber mais, é só chamar novamente. Até breve!",
-          coleta: sessao.coletado || {},
-        };
-      }
+      if (msg.includes("finalizar") || msg.includes("encerrar")) {
+      delete sessoes[idSessao]; // limpa a sessão atual
+
+      const promptMenu = `👋 Olá! Sou a ALICE, sua assistente inteligente. Como posso te ajudar hoje?\n\n` +
+        `1️⃣ Quero saber como a IA pode transformar negócios\n\n` +
+        `2️⃣ Gostaria de saber mais sobre a BRYNIX e como a IA pode me ajudar\n\n` +
+        `3️⃣ Encerrar a conversa`;
+
+      return {
+        resposta: promptMenu,
+        coleta: {},
+      };
+    }
 
       // Reapresenta menu
       const promptMenu = `👋 Olá! Sou a ALICE, sua assistente inteligente. Como posso te ajudar hoje?\n\n` +
