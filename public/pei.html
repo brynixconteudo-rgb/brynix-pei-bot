@@ -63,7 +63,7 @@
   <div id="chat">
     <div id="mensagens">
       <div class="msg ia">
-        BRYNIX: Olá! 👋 Sou o PEI, seu assistente inteligente. Como posso te ajudar hoje?<br><br>
+        BRYNIX: Olá! 👋 Sou a ALICE, sua assistente inteligente. Como posso te ajudar hoje?<br><br>
         1️⃣ Quero saber como a IA pode transformar negócios<br>
         2️⃣ Gostaria de saber mais sobre a BRYNIX e como a IA pode me ajudar<br>
         3️⃣ Encerrar a conversa
@@ -98,12 +98,13 @@
       input.value = '';
 
       try {
-        const resposta = await fetch('/pei/ia', {
+        // 🔁 Ajustado para /pei
+        const resposta = await fetch('/pei', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ pergunta: texto }),
+          body: JSON.stringify({ mensagem: texto })
         });
 
         if (!resposta.ok) {
