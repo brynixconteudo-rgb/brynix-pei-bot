@@ -8,51 +8,48 @@ async function gerarRespostaQualificacao(mensagem, sessao = {}) {
       sessao.coletado = {};
     }
 
+    // Guarda a mensagem recebida no histórico
     sessao.historico.push({ de: "usuario", texto: mensagem });
 
-    // Sequência de perguntas
-    const perguntas = [
-      { chave: "nome", texto: "Qual o seu nome, por favor?" },
-      { chave: "empresa", texto: "Certo, e qual o nome da sua empresa?" },
-      { chave: "setor", texto: "Em qual setor ou segmento sua empresa atua?" },
-      { chave: "contato", texto: "Qual meio prefere que entremos em contato? Pode ser e-mail ou WhatsApp, por exemplo." },
-      { chave: "familiaridade", texto: "Você já está familiarizado com o uso de IA no seu negócio ou gostaria de entender melhor como ela pode ajudar?" },
-    ];
-
-    // Determina próxima pergunta com base no que já foi coletado
-    for (const pergunta of perguntas) {
-      if (!sessao.coletado[pergunta.chave]) {
-        // Armazena a resposta anterior (se for o caso)
-        const chaves = perguntas.map(p => p.chave);
-        const idx = chaves.indexOf(pergunta.chave);
-        if (idx > 0) {
-          const chaveAnterior = perguntas[idx - 1].chave;
-          sessao.coletado[chaveAnterior] = mensagem;
-        }
-
-        const resposta = pergunta.texto;
-        sessao.historico.push({ de: "bot", texto: resposta });
-
-        return {
-          resposta,
-          coleta: sessao.coletado,
-        };
-      }
+    // Etapas de qualificação — você pode adicionar mais abaixo
+    if (!sessao.coletado.nome) {
+      sessao.coletado.nome = mensagem.trim();
+      const resposta = "Ótimo, " + sessao.coletado.nome + "! Qual é o nome da sua empresa?";
+      sessao.historico.push({ de: "bot", texto: resposta });
+      return { resposta, coleta: sessao.coletado };
     }
 
-    // Última resposta armazenada
-    const ultimaChave = perguntas[perguntas.length - 1].chave;
-    sessao.coletado[ultimaChave] = mensagem;
+    if (!sessao.coletado.empresa) {
+      sessao.coletado.empresa = mensagem.trim();
+      const resposta = "Perfeito. De qual setor ou segmento é sua empresa?";
+      sessao.historico.push({ de: "bot", texto: resposta });
+      return { resposta, coleta: sessao.coletado };
+    }
 
-    // Resposta final
-    const respostaFinal = `Muito obrigado pelas informações, ${sessao.coletado.nome}! 😊 Nossa equipe entrará em contato em breve pelo canal informado. Enquanto isso, sinta-se à vontade para visitar o site da BRYNIX e conhecer mais sobre como aplicamos IA para transformar negócios.`;
+    if (!sessao.coletado.setor) {
+      sessao.coletado.setor = mensagem.trim();
+      const resposta = "Obrigado. Qual meio de contato você prefere para falarmos? (WhatsApp ou E-mail, e o respectivo dado)";
+      sessao.historico.push({ de: "bot", texto: resposta });
+      return { resposta, coleta: sessao.coletado };
+    }
 
-    sessao.historico.push({ de: "bot", texto: respostaFinal });
+    if (!sessao.coletado.contato) {
+      sessao.coletado.contato = mensagem.trim();
+      const resposta = "Última pergunta: Você já conhece ou utiliza alguma solução de IA nos seus processos?";
+      sessao.historico.push({ de: "bot", texto: resposta });
+      return { resposta, coleta: sessao.coletado };
+    }
 
-    return {
-      resposta: respostaFinal,
-      coleta: sessao.coletado,
-    };
+    if (!sessao.coletado.familiaridadeIA) {
+      sessao.coletado.familiaridadeIA = mensagem.trim();
+      const resposta = `Maravilha, ${sessao.coletado.nome}! 👍 Seus dados foram registrados com sucesso.\n\nVocê pode visitar nosso site em [https://brynix.ai](https://brynix.ai) enquanto nossa equipe entra em contato com você em breve. Até logo!`;
+      sessao.historico.push({ de: "bot", texto: resposta });
+      return { resposta, coleta: sessao.coletado };
+    }
+
+    // Se tudo foi preenchido, confirma e encerra
+    const resposta = "Você já respondeu todas as perguntas. Nossa equipe entrará em contato em breve!";
+    return { resposta, coleta: sessao.coletado };
 
   } catch (erro) {
     console.error("❌ Erro em gerarRespostaQualificacao:", erro.message);
