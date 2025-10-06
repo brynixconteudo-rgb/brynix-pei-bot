@@ -18,9 +18,10 @@ Sua missão neste modo é conversar livremente com visitantes curiosos sobre o u
 - Mostre entusiasmo com as possibilidades da IA.
 - Não tente vender nada, apenas inspirar e informar.
 
-Pode seguir.`;
-  
-async function gerarResposta(mensagem, sessao = {}) {
+Pode seguir.
+`;
+
+async function gerarRespostaNegocios(mensagem, sessao = {}) {
   try {
     if (typeof sessao !== "object" || sessao === null) sessao = {};
     if (!Array.isArray(sessao.historico)) sessao.historico = [];
@@ -37,7 +38,7 @@ async function gerarResposta(mensagem, sessao = {}) {
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages,
+      messages: mensagens, // ✅ declarado corretamente aqui
       temperature: 0.7,
       max_tokens: 500,
     });
@@ -50,7 +51,7 @@ async function gerarResposta(mensagem, sessao = {}) {
       coleta: {}, // não coleta nada
     };
   } catch (erro) {
-    console.error("❌ Erro em gerarResposta (PEI Free):", erro.message);
+    console.error("❌ Erro em gerarRespostaNegocios:", erro.message);
     return {
       resposta: "Desculpe, houve um erro ao gerar a resposta. Pode tentar novamente?",
       coleta: {},
@@ -58,4 +59,4 @@ async function gerarResposta(mensagem, sessao = {}) {
   }
 }
 
-module.exports = { gerarResposta };
+module.exports = { gerarRespostaNegocios };
