@@ -2,6 +2,7 @@
 
 const { gerarRespostaNegocios } = require("./pei_ia_negocios");
 const { gerarRespostaQualificacao } = require("./pei_qualificacao_leads");
+const { gravarLogPEI } = require("../../sheets"); // ⬅️ Ajuste aqui se o nome for diferente
 
 const estados = {
   LIVRE: "livre",
@@ -13,6 +14,7 @@ const sessoes = {};
 
 async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
   try {
+    // Inicializa sessão se ainda não existir
     if (!sessoes[idSessao]) {
       sessoes[idSessao] = {
         estado: estados.INDEFINIDO,
@@ -26,12 +28,22 @@ async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
 
     // 🛑 Intercepta comando de finalização em qualquer estado
     if (msg.includes("finalizar") || msg.includes("encerrar")) {
-      sessao.historico.push({ mensagem: msg, system: "Conversa finalizada pelo usuário" });
+      sessao.historico.push({
+        mensagem: msg,
+        system: "Conversa finalizada pelo usuário",
+        data: new Date().toISOString(),
+      });
+
+      // Grava log antes de resetar sessão
+      await gravarLogPEI(idSessao, sessao);
+
+      // Reinicia sessão
       sessoes[idSessao] = {
-      estado: estados.INDEFINIDO,
-      historico: [],
-      coletado: {},
-    };
+        estado: estados.INDEFINIDO,
+        historico: [],
+        coletado: {},
+      };
+
       const promptMenu = `👋 Olá! Sou a ALICE, sua assistente inteligente. Como posso te ajudar hoje?\n\n` +
         `1️⃣ Quero saber como a IA pode transformar negócios\n\n` +
         `2️⃣ Gostaria de saber mais sobre a BRYNIX e como a IA pode me ajudar\n\n` +
@@ -61,7 +73,7 @@ async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
         );
       }
 
-      // Reapresenta menu se digitar outra coisa
+      // Se digitar algo fora do esperado
       const promptMenu = `👋 Olá! Sou a ALICE, sua assistente inteligente. Como posso te ajudar hoje?\n\n` +
         `1️⃣ Quero saber como a IA pode transformar negócios\n\n` +
         `2️⃣ Gostaria de saber mais sobre a BRYNIX e como a IA pode me ajudar\n\n` +
@@ -87,6 +99,7 @@ async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
       resposta: "Desculpe, algo deu errado aqui no PEI. Pode tentar de novo? 🙏",
       coleta: sessao.coletado || {},
     };
+
   } catch (erro) {
     console.error("❌ Erro no roteador PEI:", erro);
     return {
