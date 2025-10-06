@@ -31,6 +31,15 @@ async function roteadorPEI(mensagem, sessao = {}) {
         return await gerarRespostaQualificacao("Ótimo! Para que eu possa te apresentar algo relevante, preciso te fazer algumas perguntas rápidas. Pode ser? 😊", sessao);
       }
 
+      // Dentro de: if (sessao.estado === estados.INDEFINIDO) { ... }
+
+      if (escolha === "3") {
+        return {
+        resposta: "Obrigado por conversar com a BRYNIX! 😊 Se quiser saber mais, é só chamar novamente. Até breve!",
+        coleta: sessao.coletado || {},
+        };
+        }
+      
       const promptMenu = `Olá! 👋 Bem-vindo à BRYNIX. Posso te ajudar de duas formas:\n\n1️⃣ *Quero bater um papo sobre como a Inteligência Artificial pode transformar minha empresa!*\n\n2️⃣ *Quero saber como a BRYNIX pode me ajudar com soluções reais.*\n\nÉ só responder com "1" ou "2" e seguimos juntos. 😊`;
 
       return {
