@@ -3,10 +3,10 @@ document.addEventListener('DOMContentLoaded', function () {
   const sendButton = document.getElementById('send-button');
   const messagesDiv = document.getElementById('messages');
 
-  // Sessão local: histórico + dados coletados
   let sessao = {
     historico: [],
-    coletado: {}
+    coletado: {},
+    encerrado: false // ✅ Novo controle de encerramento
   };
 
   function appendMessage(role, content) {
@@ -19,9 +19,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function enviarMensagem() {
     const userInput = input.value.trim();
-    if (!userInput) return;
+    if (!userInput || sessao.encerrado) return;
 
-    // Adiciona mensagem do usuário ao histórico
     sessao.historico.push({ de: 'usuario', texto: userInput });
     appendMessage('user', userInput);
 
@@ -41,18 +40,27 @@ document.addEventListener('DOMContentLoaded', function () {
       const data = await response.json();
       const respostaIA = data.resposta?.trim() || '[Resposta vazia da IA]';
 
-      // Atualiza histórico e dados coletados com base na resposta
       sessao.historico.push({ de: 'bot', texto: respostaIA });
       sessao.coletado = data.coleta || sessao.coletado;
 
       appendMessage('assistant', respostaIA);
+
+      // ✅ Verifica se a conversa foi encerrada
+      if (respostaIA.includes('Foi ótimo conversar com você')) {
+        sessao.encerrado = true;
+        input.disabled = true;
+        sendButton.disabled = true;
+      }
+
     } catch (error) {
       appendMessage('assistant', '[Erro ao processar a resposta da IA]');
       console.error('Erro ao enviar mensagem:', error);
     } finally {
-      input.disabled = false;
-      sendButton.disabled = false;
-      input.focus();
+      if (!sessao.encerrado) {
+        input.disabled = false;
+        sendButton.disabled = false;
+        input.focus();
+      }
     }
   }
 
