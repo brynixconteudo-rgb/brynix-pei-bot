@@ -1,8 +1,6 @@
-// 📁 apps/pei/pei_router.js
-
 const { gerarRespostaNegocios } = require("./pei_ia_negocios");
 const { gerarRespostaQualificacao } = require("./pei_qualificacao_leads");
-const { gravarLogPEI } = require("../../sheets"); // ⬅️ Ajuste aqui se o nome for diferente
+const { gravarLogPEI } = require("../../sheets"); // ✅ Importa a função de log
 
 const estados = {
   LIVRE: "livre",
@@ -14,7 +12,6 @@ const sessoes = {};
 
 async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
   try {
-    // Inicializa sessão se ainda não existir
     if (!sessoes[idSessao]) {
       sessoes[idSessao] = {
         estado: estados.INDEFINIDO,
@@ -26,24 +23,22 @@ async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
     const sessao = sessoes[idSessao];
     const msg = mensagem.trim().toLowerCase();
 
-    // 🛑 Intercepta comando de finalização em qualquer estado
+    // 🛑 Intercepta comando de finalização
     if (msg.includes("finalizar") || msg.includes("encerrar")) {
-      sessao.historico.push({
-        mensagem: msg,
-        system: "Conversa finalizada pelo usuário",
-        data: new Date().toISOString(),
-      });
+      // 1. Salva mensagem no histórico
+      sessao.historico.push({ mensagem: msg, system: "Conversa finalizada pelo usuário" });
 
-      // Grava log antes de resetar sessão
+      // 2. Grava o log da sessão antes de limpar
       await gravarLogPEI(idSessao, sessao);
 
-      // Reinicia sessão
+      // 3. Limpa a sessão
       sessoes[idSessao] = {
         estado: estados.INDEFINIDO,
         historico: [],
         coletado: {},
       };
 
+      // 4. Retorna ao menu principal
       const promptMenu = `👋 Olá! Sou a ALICE, sua assistente inteligente. Como posso te ajudar hoje?\n\n` +
         `1️⃣ Quero saber como a IA pode transformar negócios\n\n` +
         `2️⃣ Gostaria de saber mais sobre a BRYNIX e como a IA pode me ajudar\n\n` +
@@ -73,7 +68,7 @@ async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
         );
       }
 
-      // Se digitar algo fora do esperado
+      // Reapresenta o menu se digitar algo inválido
       const promptMenu = `👋 Olá! Sou a ALICE, sua assistente inteligente. Como posso te ajudar hoje?\n\n` +
         `1️⃣ Quero saber como a IA pode transformar negócios\n\n` +
         `2️⃣ Gostaria de saber mais sobre a BRYNIX e como a IA pode me ajudar\n\n` +
@@ -85,7 +80,7 @@ async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
       };
     }
 
-    // 🚏 Roteamento por estado
+    // 🚏 Estados
     if (sessao.estado === estados.LIVRE) {
       return await gerarRespostaNegocios(mensagem, sessao);
     }
@@ -99,7 +94,6 @@ async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
       resposta: "Desculpe, algo deu errado aqui no PEI. Pode tentar de novo? 🙏",
       coleta: sessao.coletado || {},
     };
-
   } catch (erro) {
     console.error("❌ Erro no roteador PEI:", erro);
     return {
