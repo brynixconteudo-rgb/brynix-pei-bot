@@ -1,4 +1,4 @@
-// 📁 pei_structured.js
+// 📁 pei_qualificacao_leads.js
 const OpenAI = require("openai");
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
