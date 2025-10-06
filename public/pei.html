@@ -61,11 +61,26 @@
     #extra-buttons button:hover {
       background: #333;
     }
+    #modo-selector {
+      padding: 10px;
+      border-bottom: 1px solid #ccc;
+      background: #f9f9f9;
+    }
   </style>
 </head>
 <body>
 
 <div id="chat-container">
+
+  <!-- Novo seletor de modo -->
+  <div id="modo-selector">
+    <label for="modo"><strong>Como posso te ajudar?</strong></label>
+    <select id="modo">
+      <option value="structured">Quero conhecer as soluções da BRYNIX</option>
+      <option value="free">Quero conversar sobre Inteligência Artificial</option>
+    </select>
+  </div>
+
   <div id="chat"></div>
 
   <div id="form">
@@ -83,9 +98,9 @@
   const chat = document.getElementById('chat');
   const mensagemInput = document.getElementById('mensagem');
   const enviarBtn = document.getElementById('enviar');
+  const modoSelect = document.getElementById('modo');
   let sessao = {};
 
-  // Geração e persistência do sessionId no navegador
   let sessionId = localStorage.getItem("pei_session_id");
   if (!sessionId) {
     sessionId = "sess_" + Date.now() + "_" + Math.random().toString(36).substring(2, 8);
@@ -105,7 +120,10 @@
     adicionarMensagem(mensagem, 'usuario');
     mensagemInput.value = '';
 
-    fetch('/pei/ia', {
+    const modo = modoSelect.value;
+    const rota = modo === "structured" ? "/pei/structured" : "/pei/free";
+
+    fetch(rota, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mensagem, sessao, sessionId })
@@ -115,7 +133,7 @@
       adicionarMensagem(data.resposta || '[resposta vazia]', 'ia');
       if (data.sessao) {
         sessao = data.sessao;
-        sessao.sessionId = sessionId; // mantém sessionId no objeto para envio futuro
+        sessao.sessionId = sessionId;
       }
     })
     .catch(err => {
@@ -145,16 +163,12 @@
       email: sessao?.coletado?.email || '',
       whatsapp: sessao?.coletado?.contato || '',
       empresa: sessao?.coletado?.empresa || '',
+      setor: sessao?.coletado?.setor || '',
       porte: sessao?.coletado?.porte || '',
       desafio: sessao?.coletado?.desafio || '',
       tipo_interacao: 'chat_finalizado',
       classificacao: sessao?.coletado?.classificacao || 'morno',
       sessionId: sessao?.sessionId || sessionId,
-      utm_source: '',
-      utm_medium: '',
-      utm_campaign: '',
-      request_id: '',
-      ip_hash: ''
     };
 
     fetch('/pei/test', {
@@ -182,6 +196,7 @@
           email,
           whatsapp: sessao?.coletado?.contato || '',
           empresa: sessao?.coletado?.empresa || '',
+          setor: sessao?.coletado?.setor || '',
           porte: sessao?.coletado?.porte || '',
           desafio: sessao?.coletado?.desafio || '',
           classificacao: sessao?.coletado?.classificacao || 'morno',
