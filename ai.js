@@ -107,12 +107,26 @@ async function gerarResposta(mensagem, sessao = {}) {
 
     sessao.historico.push({ de: "bot", texto: resposta });
 
-    // Atualizar coleta
+    // Atualizar coleta com logs ricos
     const historicoCompleto = sessao.historico.map(h => h.texto).join("\n");
+
+    console.log("📥 Histórico completo antes da coleta:");
+    console.log(historicoCompleto);
+
+    console.log("📦 Coleta atual antes da regex:");
+    console.log(sessao.coletado);
+
     const dadosExtraidos = extrairDados(historicoCompleto);
+
+    console.log("📤 Novos dados extraídos:");
+    console.log(dadosExtraidos);
+
     for (const chave in dadosExtraidos) {
       if (!sessao.coletado[chave]) {
         sessao.coletado[chave] = dadosExtraidos[chave];
+        console.log(`✅ Novo dado coletado: ${chave} = ${dadosExtraidos[chave]}`);
+      } else {
+        console.log(`ℹ️ Já havia ${chave}: ${sessao.coletado[chave]}`);
       }
     }
 
@@ -125,6 +139,9 @@ async function gerarResposta(mensagem, sessao = {}) {
       sessao.coletado.desafio;
 
     if (completo && !sessao.coletado.encerrado) {
+      console.log("🚪 Finalizando conversa — todos dados coletados:");
+      console.log(sessao.coletado);
+
       sessao.coletado.encerrado = true;
 
       const fechamento = `Perfeito! 😊 Com todas essas informações, já posso passar seu contato para nosso time.
