@@ -1,110 +1,62 @@
-const express = require("express");
-const router = express.Router();
-const gerarResposta = require("../../ai");
-const { salvarLead } = require("../../sheets");
+document.addEventListener('DOMContentLoaded', function () {
+  const input = document.getElementById('user-input');
+  const sendButton = document.getElementById('send-button');
+  const messagesDiv = document.getElementById('messages');
 
-const sessions = {}; // Armazena dados por sessionId
-
-router.post("/pei/ia", async (req, res) => {
-  const { mensagem, sessionId } = req.body;
-
-  if (!mensagem || !sessionId) {
-    return res.status(400).json({ erro: "Mensagem ou sessionId ausentes." });
-  }
-
-  // Inicia sessão se necessário
-  if (!sessions[sessionId]) {
-    sessions[sessionId] = {
-      nome: null,
-      empresa: null,
-      contato: null,
-      desafio: null,
-      classificacao: null,
-      historico: [],
-      finalizada: false
-    };
-  }
-
-  const sessao = sessions[sessionId];
-
-  // Se a sessão estiver finalizada, apenas responde de forma cordial sem reiniciar fluxo
-  if (sessao.finalizada) {
-    const resposta = `Perfeito! Seus dados já foram salvos e nossa equipe entrará em contato em breve. Se tiver mais perguntas ou quiser conversar, estou por aqui. 😊`;
-    sessao.historico.push({ de: "usuario", texto: mensagem });
-    sessao.historico.push({ de: "bot", texto: resposta });
-    return res.json({ resposta });
-  }
-
-  try {
-    // Prepara contexto para IA
-    const contexto = {
-      historico: sessao.historico,
-      coletado: {
-        nome: sessao.nome,
-        empresa: sessao.empresa,
-        contato: sessao.contato,
-        desafio: sessao.desafio,
-        classificacao: sessao.classificacao
-      }
-    };
-
-    const { resposta, coleta } = await gerarResposta(mensagem, contexto);
-
-    // Atualiza os dados coletados na sessão, mas não sobrescreve se já existir
-    if (coleta && typeof coleta === "object") {
-      for (const [campo, valor] of Object.entries(coleta)) {
-        if (valor && (!sessao[campo] || sessao[campo].trim() === "")) {
-          sessao[campo] = valor.trim();
-        }
-      }
+  // Cria histórico de mensagens
+  let historicoMensagens = [
+    {
+      role: 'system',
+      content: 'Você é o assistente PEI da BRYNIX, especialista em qualificar leads e conversar naturalmente sobre o uso de IA para negócios. Seja profissional, simpático e mantenha o tom humano, sem parecer um robô.'
     }
+  ];
 
-    // Atualiza histórico da conversa
-    sessao.historico.push({ de: "usuario", texto: mensagem });
-    sessao.historico.push({ de: "bot", texto: resposta });
-
-    // Verifica se todos os dados foram coletados
-    const camposObrigatorios = ["nome", "empresa", "contato", "desafio", "classificacao"];
-    const completo = camposObrigatorios.every(c => sessao[c]);
-
-    if (completo) {
-      await salvarLead({
-        nome: sessao.nome,
-        empresa: sessao.empresa,
-        contato: sessao.contato,
-        desafio: sessao.desafio,
-        classificacao: sessao.classificacao,
-        origem: "Chat PEI",
-        dataHora: new Date().toISOString()
-      });
-
-      console.log(`✅ Lead salvo com sucesso na planilha:`, {
-        nome: sessao.nome,
-        empresa: sessao.empresa,
-        contato: sessao.contato,
-        desafio: sessao.desafio,
-        classificacao: sessao.classificacao
-      });
-
-      // Marca a sessão como finalizada (mas mantém para caso a pessoa continue interagindo)
-      sessao.finalizada = true;
-    } else {
-      console.log(`⚠️ Lead incompleto, ainda não salvo (sessionId: ${sessionId})`, {
-        coletado: {
-          nome: sessao.nome,
-          empresa: sessao.empresa,
-          contato: sessao.contato,
-          desafio: sessao.desafio,
-          classificacao: sessao.classificacao
-        }
-      });
-    }
-
-    res.json({ resposta });
-  } catch (err) {
-    console.error("❌ Erro ao processar mensagem:", err);
-    res.status(500).json({ erro: "Erro interno da IA" });
+  function appendMessage(role, content) {
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message');
+    messageElement.innerHTML = `<strong>${role === 'user' ? 'Você' : 'BRYNIX'}:</strong> ${content}`;
+    messagesDiv.appendChild(messageElement);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
+
+  async function enviarMensagem() {
+    const userInput = input.value.trim();
+    if (!userInput) return;
+
+    // Adiciona mensagem do usuário ao histórico
+    historicoMensagens.push({ role: 'user', content: userInput });
+    appendMessage('user', userInput);
+    input.value = '';
+    input.disabled = true;
+    sendButton.disabled = true;
+
+    try {
+      const response = await fetch('/pei/ia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ historico: historicoMensagens })
+      });
+
+      if (!response.ok) throw new Error('Erro na comunicação com a IA.');
+
+      const data = await response.json();
+      const respostaIA = data.resposta?.trim() || '[Resposta vazia da IA]';
+
+      // Adiciona resposta da IA ao histórico
+      historicoMensagens.push({ role: 'assistant', content: respostaIA });
+      appendMessage('assistant', respostaIA);
+    } catch (error) {
+      appendMessage('assistant', '[Erro ao processar a resposta da IA]');
+      console.error('Erro ao enviar mensagem:', error);
+    } finally {
+      input.disabled = false;
+      sendButton.disabled = false;
+      input.focus();
+    }
+  }
+
+  sendButton.addEventListener('click', enviarMensagem);
+  input.addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') enviarMensagem();
+  });
 });
-
-module.exports = router;
