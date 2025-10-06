@@ -3,9 +3,8 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Prompt Base (PEI V1.1)
-function construirPrompt(historico, sessao) {
-  const intro = `
+// 🎯 System Prompt (PEI V1.1)
+const systemPrompt = `
 Você é o PEI (Porta de Entrada Inteligente), um assistente de recepção da BRYNIX.
 
 🧠 Sua missão é recepcionar visitantes do site com leveza, inteligência e simpatia — conduzindo uma conversa fluida, humana e profissional.
@@ -34,18 +33,25 @@ Você é o PEI (Porta de Entrada Inteligente), um assistente de recepção da BR
 - Acolhedora, sem parecer robótica
 - Curiosa, sem ser invasiva
 - Fluida, como um humano real
-
-→ Use tudo isso como base para construir sua resposta. Nunca seja repetitivo.
 `;
 
-  const historicoTexto = historico
-    .map(msg => `${msg.de === "usuario" ? "Usuário" : "PEI"}: ${msg.texto}`)
-    .join("\n");
+// 🧠 Reconstruir histórico real em formato messages[]
+function construirMensagens(historico) {
+  const mensagens = [
+    { role: 'system', content: systemPrompt }
+  ];
 
-  return `${intro}\n\n${historicoTexto}\n\nPEI:`;
+  for (const msg of historico) {
+    mensagens.push({
+      role: msg.de === 'usuario' ? 'user' : 'assistant',
+      content: msg.texto
+    });
+  }
+
+  return mensagens;
 }
 
-// 🔧 RegExs aprimoradas para extrair dados de forma flexível
+// 🔍 Extração de dados via regex (flexível e tolerante)
 function extrairDados(resposta) {
   const coleta = {};
 
@@ -68,39 +74,35 @@ function extrairDados(resposta) {
   return coleta;
 }
 
-// 🤖 Função principal da IA
+// 🤖 Função principal de geração da resposta
 async function gerarResposta(mensagem, sessao = {}) {
   try {
-    // Garantir estrutura esperada
+    // Estrutura segura
     if (typeof sessao !== 'object' || sessao === null) sessao = {};
     if (!Array.isArray(sessao.historico)) sessao.historico = [];
     if (typeof sessao.coletado !== 'object' || sessao.coletado === null) sessao.coletado = {};
 
-    // Atualiza histórico com a nova entrada do usuário
+    // Adiciona a nova mensagem do usuário ao histórico
     sessao.historico.push({ de: "usuario", texto: mensagem });
 
-    // Geração do prompt contextualizado
-    const prompt = construirPrompt(sessao.historico, sessao);
+    // Prepara histórico formatado
+    const mensagens = construirMensagens(sessao.historico);
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [
-        { role: "system", content: prompt },
-        { role: "user", content: mensagem }
-      ],
+      messages: mensagens,
       temperature: 0.7,
       max_tokens: 500,
     });
 
     const resposta = completion.choices[0].message.content.trim();
 
-    // Atualiza histórico com a resposta do PEI
+    // Adiciona resposta ao histórico
     sessao.historico.push({ de: "bot", texto: resposta });
 
-    // Extrai dados da interação combinando entrada + resposta
+    // Extrai dados combinando entrada + saída
     const dadosExtraidos = extrairDados(`${mensagem}\n${resposta}`);
 
-    // Atualiza sessão com dados novos (sem sobrescrever os já coletados)
     for (const chave in dadosExtraidos) {
       if (!sessao.coletado[chave]) {
         sessao.coletado[chave] = dadosExtraidos[chave];
@@ -109,7 +111,6 @@ async function gerarResposta(mensagem, sessao = {}) {
 
     console.log("💡 Dados coletados até agora:", sessao.coletado);
 
-    // Verifica se tudo está preenchido
     const completo =
       sessao.coletado.nome &&
       sessao.coletado.empresa &&
@@ -117,7 +118,6 @@ async function gerarResposta(mensagem, sessao = {}) {
       sessao.coletado.desafio &&
       sessao.coletado.classificacao;
 
-    // Se completo, sobrescreve resposta com CTA final (opcional)
     if (completo) {
       const fechamento = `Perfeito! 😊 Com todas essas informações, já posso passar seu contato para nosso time.
 
@@ -145,5 +145,4 @@ Obrigado por compartilhar tudo com a gente. Foi ótimo conversar com você! 👋
   }
 }
 
-// ✅ Exportação nomeada
 module.exports = { gerarResposta };
