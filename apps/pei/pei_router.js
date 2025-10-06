@@ -9,11 +9,10 @@ const estados = {
   INDEFINIDO: undefined,
 };
 
-const sessoes = {}; // chave: idSessao, valor: objeto de sessão
+const sessoes = {};
 
 async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
   try {
-    // Inicializa sessão se não existir
     if (!sessoes[idSessao]) {
       sessoes[idSessao] = {
         estado: estados.INDEFINIDO,
@@ -23,16 +22,11 @@ async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
     }
 
     const sessao = sessoes[idSessao];
-
-    // Garante estrutura
-    if (typeof sessao !== "object" || sessao === null) sessoes[idSessao] = {};
-    if (!Array.isArray(sessao.historico)) sessao.historico = [];
-    if (typeof sessao.estado === "undefined") sessao.estado = estados.INDEFINIDO;
-
-    // 🔁 Intercepta "finalizar" ou "encerrar" — em qualquer ponto
     const msg = mensagem.trim().toLowerCase();
+
+    // 🛑 Intercepta comando de finalização em qualquer estado
     if (msg.includes("finalizar") || msg.includes("encerrar")) {
-      delete sessoes[idSessao]; // limpa a sessão atual
+      delete sessoes[idSessao];
 
       const promptMenu = `👋 Olá! Sou a ALICE, sua assistente inteligente. Como posso te ajudar hoje?\n\n` +
         `1️⃣ Quero saber como a IA pode transformar negócios\n\n` +
@@ -63,21 +57,7 @@ async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
         );
       }
 
-      if (msg.includes("finalizar") || msg.includes("encerrar")) {
-      delete sessoes[idSessao]; // limpa a sessão atual
-
-      const promptMenu = `👋 Olá! Sou a ALICE, sua assistente inteligente. Como posso te ajudar hoje?\n\n` +
-        `1️⃣ Quero saber como a IA pode transformar negócios\n\n` +
-        `2️⃣ Gostaria de saber mais sobre a BRYNIX e como a IA pode me ajudar\n\n` +
-        `3️⃣ Encerrar a conversa`;
-
-      return {
-        resposta: promptMenu,
-        coleta: {},
-      };
-    }
-
-      // Reapresenta menu
+      // Reapresenta menu se digitar outra coisa
       const promptMenu = `👋 Olá! Sou a ALICE, sua assistente inteligente. Como posso te ajudar hoje?\n\n` +
         `1️⃣ Quero saber como a IA pode transformar negócios\n\n` +
         `2️⃣ Gostaria de saber mais sobre a BRYNIX e como a IA pode me ajudar\n\n` +
@@ -89,7 +69,7 @@ async function roteadorPEI(mensagem, idSessao = "sessao_padrao") {
       };
     }
 
-    // 🚏 Estados ativos
+    // 🚏 Roteamento por estado
     if (sessao.estado === estados.LIVRE) {
       return await gerarRespostaNegocios(mensagem, sessao);
     }
